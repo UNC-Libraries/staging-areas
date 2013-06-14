@@ -1,0 +1,16 @@
+{
+	"stagingAreas":{
+		"tag:count0.irods.grid,2013:irodsStaging":{
+			"name":"Personal iRODS Stage",
+			"mappings":[
+			    "irods:cdr-stage.lib.unc.edu:5555/stagingZone/home/count0"
+			],
+			"putPattern":"/${project}/${uuid}",
+			"ingestCleanupPolicy":"DELETE_INGESTED_FILES"
+		}
+	},
+    "customMappings" :{
+    	"tag:cdr.lib.unc.edu,2013:storhouse_shc":"file:/Z:/in_process",
+    	"tag:cdr.lib.unc.edu,2013:digitalarchive":"file:/H:/"
+    }
+}
