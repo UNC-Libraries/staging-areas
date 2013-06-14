@@ -50,7 +50,8 @@ Build
 ----
 
 After you clone this github project, you can build it with maven:
-  mvn clean install
+
+    # mvn clean install
 
 More Information
 ----
