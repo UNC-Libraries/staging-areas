@@ -13,7 +13,7 @@ One approach to sharing file references is to make a Tag URI. Tag URIs can encod
 
 For example, say we stage a file to a network drive on a Windows machine. This gives us a file URI:
 
-    file:Z:/something/stage-one/project-alpha/photo1.tiff
+    file:/Z:/something/stage-one/project-alpha/photo1.tiff
 
 The shared JSON staging definitions include a staging area that maps to the stage-one folder above:
 
@@ -37,6 +37,9 @@ This reference is more portable than the local machine file URI. Other software,
 to convert the Tag back into a local machine file URI:
 
     file:/mnt/shared/something/stage-one 
+    
+When a project or manifest is involved in a multi-user work flow, the Tag URIs work the same way to maintain file references in
+diverse environments.
 
 Requirements
 ----
