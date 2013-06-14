@@ -7,7 +7,7 @@ Overview
 This library helps organizations maintain common file references in distributed digital work flows, despite file mapping differences across machines and platforms. Software may use the library to create common reference URIs from machine-specific file references. It can also find and create machine-specific references from the common reference URIs. It includes support for automated local discovery and mapping of common staging areas, which are shared between client software and repositories through a JSON file.
 
 ###Common Tag URI Approach
-One approach to sharing file references is to make a Tag URI. Tag URIs encode the path to files within commonly understood staging areas:
+One approach to sharing file references is to make a Tag URI. Tag URIs can encode the path to files within commonly understood staging areas:
 
     tag:myrepo.pendleton.edu,2013:stageOne/project-alpha/photo.tiff
 
