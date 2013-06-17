@@ -36,7 +36,7 @@ Then it is possible to rewrite the file reference as a Tag URI:
 This reference is more portable than the local machine file URI. Other software, including the repository, can use this library
 to convert the Tag back into a local machine file URI:
 
-    file:/mnt/shared/something/stage-one 
+    file:/mnt/shared/something/stage-one/project-alpha/photo.tiff 
     
 When a project or manifest is involved in a multi-user work flow, the Tag URIs work the same way to maintain file references in
 diverse environments.
