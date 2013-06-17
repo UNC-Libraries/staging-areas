@@ -38,8 +38,8 @@ to convert the Tag back into a local machine file URI:
 
     file:/mnt/shared/something/stage-one/project-alpha/photo.tiff 
     
-When a project or manifest is involved in a multi-user work flow, the Tag URIs work the same way to maintain file references in
-diverse environments.
+When a project or manifest is involved in a multi-user work flow, the Tag URIs work the same way to maintain file references
+on a variety of platforms and machines.
 
 Requirements
 ----
