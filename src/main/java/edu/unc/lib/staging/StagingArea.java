@@ -1,5 +1,7 @@
 package edu.unc.lib.staging;
 
+import java.io.File;
+
 public interface StagingArea {
 
 	/**
@@ -63,6 +65,12 @@ public interface StagingArea {
 	 * @param stageURI the URL of the staging
 	 */
 	public abstract void setCustomMapping(String localURL);
+	
+	/**
+	 * Retrieve the custom local mapping for this staging area.
+	 * @return
+	 */
+	public abstract String getCustomMapping();
 
 	/**
 	 * Does this staged file URI match the staging area.
@@ -72,27 +80,10 @@ public interface StagingArea {
 	public abstract boolean matches(String stagedURI);
 
 	/**
-	 * Initializes the StagingArea bean.
-	 * @throws StagingException
+	 * Creates a common staged file reference for a local file.
+	 * @param testFile
+	 * @return
 	 */
-	public abstract void init() throws StagingException;
-
-	/**
-	 * Sets the URL which defines this staging area.
-	 * @param origin
-	 */
-	public abstract void setOrigin(String origin);
-
-	/**
-	 * Sets the resolver bean used to test the existence of local mappings.
-	 * @param resolver
-	 */
-	public abstract void setResolver(LocalResolver resolver);
-
-	/**
-	 * Set the URI which identifies this staging area.
-	 * @param uri
-	 */
-	public abstract void setUri(String uri);
+	public abstract String getStagedURI(File testFile);
 
 }

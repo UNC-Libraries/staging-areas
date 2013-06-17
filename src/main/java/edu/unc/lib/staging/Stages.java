@@ -43,6 +43,7 @@ public class Stages {
 		return Collections.unmodifiableMap(this.areas);
 	}
 
+	@SuppressWarnings("unchecked")
 	private void loadLocalConfig() throws StagingException {
 		try {
 			JsonNode rnode;
@@ -70,8 +71,10 @@ public class Stages {
 	private void addStagingArea(ObjectMapper om, String uri, JsonNode areaNode,
 			String origin) throws StagingException {
 		try {
+			if(areas.containsKey(uri)) return;
 			URI u = new URI(uri);
-			StagingArea stage;
+			AbstractSharedStagingArea stage;
+			// FIXME pluggable shared staging area classes
 			if ("tag".equals(u.getScheme())) {
 				stage = om.treeToValue(areaNode, TagSharedStagingArea.class);
 			} else if ("irods".equals(u.getScheme())) {
@@ -196,6 +199,10 @@ public class Stages {
 		// if verified, convert stagedURI to localURI
 		result = possible.get(0).getLocalURL(stagedURI);
 		return result;
+	}
+
+	public StagingArea getStage(String string) {
+		return this.areas.get(string);
 	}
 
 }

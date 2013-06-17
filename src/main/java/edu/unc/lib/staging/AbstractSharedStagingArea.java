@@ -1,6 +1,5 @@
 package edu.unc.lib.staging;
 
-import java.io.File;
 
 /**
  * These are staging areas common to a work group. Files staged in these spaces
