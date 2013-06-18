@@ -1,14 +1,7 @@
 package edu.unc.lib.staging;
 
-import java.io.File;
 
 public interface StagingArea {
-
-	/**
-	 * Name of the key file which is present at the base of this staging area.
-	 * @return
-	 */
-	public abstract String getKeyFile();
 
 	/**
 	 * URI that identifies this staging area
@@ -27,19 +20,6 @@ public interface StagingArea {
 	 * @return
 	 */
 	public abstract CleanupPolicy getIngestCleanupPolicy();
-
-	/**
-	 * The naming pattern by which files are staged in this space,
-	 * includes placeholders. 
-	 * @return
-	 */
-	public abstract String getPutPattern();
-
-	/**
-	 * These are the commonly used URL patterns for this stage.
-	 * @return an array of mapping URLs, usually drive mappings
-	 */
-	public abstract String[] getMappings();
 
 	/**
 	 * Is the local mapping for this stage connected.
@@ -61,29 +41,17 @@ public interface StagingArea {
 	public abstract String getLocalURL(String stagedURI);
 
 	/**
-	 * Set the locally resolvable URL that maps to the root of this staging area.
-	 * @param stageURI the URL of the staging
-	 */
-	public abstract void setCustomMapping(String localURL);
-	
-	/**
-	 * Retrieve the custom local mapping for this staging area.
-	 * @return
-	 */
-	public abstract String getCustomMapping();
-
-	/**
 	 * Does this staged file URI match the staging area.
 	 * @param stagedURI a staged file URI
 	 * @return true if URI 
 	 */
-	public abstract boolean matches(String stagedURI);
+	public abstract boolean isWithin(String stagedURI);
 
 	/**
-	 * Creates a common staged file reference for a local file.
+	 * Creates a shared staged file reference for a local file.
 	 * @param testFile
 	 * @return
 	 */
-	public abstract String getStagedURI(File testFile);
+	public abstract String getSharedURI(String localURL);
 
 }

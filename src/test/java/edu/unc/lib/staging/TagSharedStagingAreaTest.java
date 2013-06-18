@@ -9,7 +9,9 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.text.MessageFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -30,42 +32,46 @@ public class TagSharedStagingAreaTest {
 		} finally {
 			if(r != null) r.close();
 		}
-		this.stages = new Stages(new String[] {"file:src/test/resources/stages.json"}, sb.toString(), new FileResolver());
+		List<URIPattern> patterns = new ArrayList<URIPattern>();
+		patterns.add(new TagURIPattern());
+		patterns.add(new IrodsURIPattern());
+		this.stages = new Stages(sb.toString(), new FileResolver(), patterns);
 	}
 	
 	@Test
-	public void testMatches() {
-		String test1 = "tag:count0@cdr.lib.unc.edu,2013-01-01:storhouse/bla/bla/bla";
-		TagSharedStagingArea area = new TagSharedStagingArea();
-		String stageURI = "tag:cdr.lib.unc.edu,2013:storhouse";
+	public void testMatches() throws Exception {
+		String test1 = "tag:count0@cdr.lib.unc.edu,2013-01-01:/storhouse/bla/bla/bla";
+		SharedStagingArea area = new SharedStagingArea();
+		String stageURI = "tag:cdr.lib.unc.edu,2013:/storhouse/";
 		area.setUri(stageURI);
-		assertTrue(stageURI+" must match "+test1, area.matches(test1));
+		area.setUriPattern(new TagURIPattern());
+		assertTrue(stageURI+" must match "+test1, area.isWithin(test1));
 	}
 
 	@Test
 	public void testTagUriResolvesRegardlessOfDateAndUser() throws StagingException, URISyntaxException {
-		String lDir = new File("src/test/resources").toURI().toString();
-		lDir = lDir.substring(0, lDir.length()-1);
-		this.stages.setCustomMapping("tag:cdr.lib.unc.edu,2013:storhouse_shc", lDir);
+		String lDir = new File("src/test/resources/").toURI().toString();
+		lDir = lDir.substring(0, lDir.length());
+		this.stages.setCustomMapping("tag:cdr.lib.unc.edu,2013:/storhouse_shc/", lDir);
 		File f = new File("src/test/resources/local.txt");
 		URI uri = f.toURI();
-		String local = this.stages.getLocalURL("tag:user@cdr.lib.unc.edu,2013-01-01:storhouse_shc/local.txt");
+		String local = this.stages.getLocalURL("tag:user@cdr.lib.unc.edu,2013-01-01:/storhouse_shc/local.txt");
 		boolean match = uri.equals(new URI(local));
 		assertTrue("Local mapping "+local+" must match expected path "+uri, match);
 	}
 
 	@Test
-	public void testMakeStagedFileURI() {
-		String stageID = "tag:cdr.lib.unc.edu,2013:digitalarchive";
+	public void testMakeStagedFileURI() throws Exception {
+		String stageID = "tag:cdr.lib.unc.edu,2013:/digitalarchive/";
 		String isoDate = new SimpleDateFormat("yyyy-MM-dd").format(new Date(System.currentTimeMillis()));
-		String expectedValue = MessageFormat.format("tag:{0}@cdr.lib.unc.edu,{1}:digitalarchive/resources/stages.json", System.getProperty("user.name"), isoDate);
+		String expectedValue = MessageFormat.format("tag:{0}@cdr.lib.unc.edu,{1}:/digitalarchive/resources/stages.json", System.getProperty("user.name"), isoDate);
 		File lDir = new File("src/test");
 		File testFile = new File("src/test/resources/stages.json"); // just using JSON file as a data file
 		String lDirStr = lDir.toURI().toString();
-		lDirStr = lDirStr.substring(0, lDirStr.length()-1); // trimming off the trailing slash
+		lDirStr = lDirStr.substring(0, lDirStr.length());
 		this.stages.setCustomMapping(stageID, lDirStr);
-		StagingArea stage = this.stages.getStage("tag:cdr.lib.unc.edu,2013:digitalarchive");
-		String fileStagedURI = stage.getStagedURI(testFile);
+		StagingArea stage = this.stages.getStage(stageID);
+		String fileStagedURI = stage.getSharedURI(testFile.toURI().toString());
 		assertTrue(fileStagedURI+" must match "+expectedValue, expectedValue.equals(fileStagedURI));
 	}
 	

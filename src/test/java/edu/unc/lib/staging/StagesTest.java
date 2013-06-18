@@ -8,6 +8,8 @@ import java.io.File;
 import java.io.FileReader;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -28,7 +30,10 @@ public class StagesTest {
 		} finally {
 			if(r != null) r.close();
 		}
-		this.stages = new Stages(new String[] {"file:src/test/resources/stages.json"}, sb.toString(), new FileResolver());
+		List<URIPattern> patterns = new ArrayList<URIPattern>();
+		patterns.add(new TagURIPattern());
+		patterns.add(new IrodsURIPattern());
+		this.stages = new Stages(sb.toString(), new FileResolver(), patterns);
 	}
 	
 	@Test
@@ -38,33 +43,33 @@ public class StagesTest {
 	
 	@Test
 	public void testCustomMappingsLoaded() {
-		String stageId = "tag:cdr.lib.unc.edu,2013:storhouse_shc";
-		String customMapping = "file:/Z:/in_process";
-		String foundMapping = this.stages.getStage(stageId).getCustomMapping();
+		String stageId = "tag:cdr.lib.unc.edu,2013:/storhouse_shc/";
+		String customMapping = "file:/Z:/in_process/";
+		String foundMapping = ((SharedStagingArea)this.stages.getStage(stageId)).getCustomMapping();
 		assertTrue("Mapping must match local JSON config", customMapping.equals(foundMapping));
 	}
 	
 	@Test
 	public void testLocalStageDefinitionsOverrideRemote() {
-		StagingArea override = this.stages.getStage("tag:cdr.lib.unc.edu,2013:irodsStaging");
+		StagingArea override = this.stages.getStage("irods:cdr-stage.lib.unc.edu:5555/stagingZone/home/stage/alpha/");
 		assertTrue("Local definitions must take precendence over remote.", "My Override iRODS Stage Alpha".equals(override.getName()));
 	}
 	
 	@Test
 	public void testCustomLocalMappingUpdateAndExport() {
-		// make sure that additional local mappings can be configured and then exported to JSON
-		
+		// make sure that additional local mappings can be configured and then exported to JSON	
 		fail("not implemented");
 	}
 	
 	@Test
 	public void testLocalFileResolvesFromRemoteConfig() throws StagingException, URISyntaxException {
-		String lDir = new File("src/test/resources").toURI().toString();
-		lDir = lDir.substring(0, lDir.length()-1);
-		this.stages.setCustomMapping("tag:cdr.lib.unc.edu,2013:storhouse_shc", lDir);
+		String lDir = new File("src/test/resources/").toURI().toString();
+		lDir = lDir.substring(0, lDir.length());
+		this.stages.setCustomMapping("tag:cdr.lib.unc.edu,2013:/storhouse_shc/", lDir);
 		File f = new File("src/test/resources/local.txt");
 		URI uri = f.toURI();
-		String local = this.stages.getLocalURL("tag:cdr.lib.unc.edu,2013:storhouse_shc/local.txt");
+		String local = this.stages.getLocalURL("tag:cdr.lib.unc.edu,2013:/storhouse_shc/local.txt");
+		assertTrue("Returned local URL must not be null.", local != null);
 		boolean match = uri.equals(new URI(local));
 		assertTrue("Local mapping "+local+" must match expected path "+uri, match);
 	}

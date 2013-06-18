@@ -20,16 +20,17 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class Stages {
 	Logger log = LoggerFactory.getLogger(Stages.class);
-	private String[] remoteConfigURLs;
-	private Map<String, StagingArea> areas = new HashMap<String, StagingArea>();
+	private List<String> remoteConfigURLs;
+	private Map<String, SharedStagingArea> areas = new HashMap<String, SharedStagingArea>();
+	private List<URIPattern> uriPatterns;
 	private LocalResolver resolver;
 	private String localConfig;
 	private Map<String, String> customMappings = new HashMap<String, String>();
 
-	public Stages(String[] remoteConfigURLs, String localConfig,
-			LocalResolver resolver) throws StagingException {
-		this.remoteConfigURLs = remoteConfigURLs;
+	public Stages(String localConfig,
+			LocalResolver resolver, List<URIPattern> uriPatterns) throws StagingException {
 		this.resolver = resolver;
+		this.uriPatterns = uriPatterns;
 		this.localConfig = localConfig;
 		if (localConfig != null) {
 			loadLocalConfig();
@@ -40,7 +41,9 @@ public class Stages {
 	}
 
 	public Map<String, StagingArea> getAreas() {
-		return Collections.unmodifiableMap(this.areas);
+		Map<String, StagingArea> result = new HashMap<String, StagingArea>();
+		result.putAll(areas);
+		return Collections.unmodifiableMap(result);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -62,6 +65,13 @@ public class Stages {
 					addStagingArea(om, uri, areaNode, "LOCAL");
 				}
 			}
+			if(rnode.has("remoteConfigurations")) {
+				JsonNode rconfigs = rnode.get("remoteConfigurations");
+				remoteConfigURLs = new ArrayList<String>(rconfigs.size());
+				for(int i = 0; i < rconfigs.size(); i++) {
+					remoteConfigURLs.add(rconfigs.get(i).asText());
+				}
+			}
 		} catch (IOException e) {
 			log.error("Cannot read local staging config.", e);
 			throw new StagingException("Cannot read local staging config.", e);
@@ -73,14 +83,15 @@ public class Stages {
 		try {
 			if(areas.containsKey(uri)) return;
 			URI u = new URI(uri);
-			AbstractSharedStagingArea stage;
-			// FIXME pluggable shared staging area classes
-			if ("tag".equals(u.getScheme())) {
-				stage = om.treeToValue(areaNode, TagSharedStagingArea.class);
-			} else if ("irods".equals(u.getScheme())) {
-				log.error("IRODS staging area not yet implemented");
-				return;
-			} else {
+			SharedStagingArea stage = om.treeToValue(areaNode, SharedStagingArea.class);
+			for(URIPattern p : uriPatterns) {
+				if(p.matches(uri)) {
+					stage.setUriPattern(p);
+					break;
+				}
+			}
+			if(stage.getUriPattern() == null) {
+				log.error("Cannot find a URI pattern for stage: "+stage.getUri());
 				return;
 			}
 			stage.setOrigin(origin);
@@ -111,10 +122,12 @@ public class Stages {
 		throw new IllegalArgumentException();
 	}
 
-	public void setCustomMapping(String stageURI, String localURI) {
-		this.customMappings.put(stageURI, localURI);
+	public void setCustomMapping(String stageURI, String localURI) throws StagingException {
 		if (this.areas.get(stageURI) != null) {
+			this.customMappings.put(stageURI, localURI);
 			this.areas.get(stageURI).setCustomMapping(localURI);
+		} else {
+			throw new StagingException("No configuration found for the stage with id: "+stageURI );
 		}
 	}
 
@@ -151,7 +164,7 @@ public class Stages {
 		for (StagingArea area : areas.values()) {
 			// FIXME this really needs to be pattern based, i.e. tag and irods
 			// URIs have more variety within a stage
-			if (area.matches(stagedURI)) {
+			if (area.isWithin(stagedURI)) {
 				possible.add(area);
 			}
 		}

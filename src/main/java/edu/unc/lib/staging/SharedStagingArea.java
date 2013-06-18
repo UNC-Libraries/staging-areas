@@ -1,5 +1,8 @@
 package edu.unc.lib.staging;
 
+import java.util.ArrayList;
+import java.util.List;
+
 
 /**
  * These are staging areas common to a work group. Files staged in these spaces
@@ -12,13 +15,23 @@ package edu.unc.lib.staging;
  * @author count0
  *
  */
-public abstract class AbstractSharedStagingArea implements StagingArea {
-	String configURL;
-	String uri;
+public class SharedStagingArea implements StagingArea {
+	transient String configURL; // injected at runtime
+	String sharedBaseURI;
+	transient String localBaseURI; // determined at runtime
 	String name;
 	CleanupPolicy ingestCleanupPolicy;
 	String keyFile;
+	transient URIPattern uriPattern; // determined at runtime
 	
+	public URIPattern getUriPattern() {
+		return this.uriPattern;
+	}
+
+	public void setUriPattern(URIPattern p) {
+		this.uriPattern = p;
+	}
+
 	/* (non-Javadoc)
 	 * @see edu.unc.lib.staging.StagingArea#getKeyFile()
 	 */
@@ -31,13 +44,12 @@ public abstract class AbstractSharedStagingArea implements StagingArea {
 	}
 
 	String putPattern;
-	String[] mappings;
+	List<String> mappings = new ArrayList<String>();
 	String customMapping;
 	private LocalResolver resolver;
-	String resolvedMapping = null;
 	
 	public void init() throws StagingException {
-		this.resolvedMapping = findLocalMapping();
+		this.localBaseURI = findLocalBase();
 	}
 
 	public void setOrigin(String configURL) {
@@ -56,11 +68,11 @@ public abstract class AbstractSharedStagingArea implements StagingArea {
 	 * @see edu.unc.lib.staging.StagingArea#getUri()
 	 */
 	public String getUri() {
-		return uri;
+		return sharedBaseURI;
 	}
 
 	public void setUri(String uri) {
-		this.uri = uri;
+		this.sharedBaseURI = uri;
 	}
 
 	/* (non-Javadoc)
@@ -99,25 +111,23 @@ public abstract class AbstractSharedStagingArea implements StagingArea {
 	/* (non-Javadoc)
 	 * @see edu.unc.lib.staging.StagingArea#getMappings()
 	 */
-	public String[] getMappings() {
+	public List<String> getMappings() {
 		return mappings;
 	}
 
-	public void setMappings(String[] mappings) {
+	public void setMappings(List<String> mappings) {
 		this.mappings = mappings;
 	}
 
 	public boolean isConnected() {
-		return (resolvedMapping != null && this.resolver.exists(resolvedMapping));
+		return (localBaseURI != null && this.resolver.exists(localBaseURI));
 	}
 
 	public boolean isVerified() {
-		return (this.keyFile != null && this.resolver.exists(resolvedMapping+"/"+this.keyFile));
+		return (this.keyFile != null && this.resolver.exists(localBaseURI+"/"+this.keyFile));
 	}
-
-	public abstract String getLocalURL(String stagedURI);
 	
-	private String findLocalMapping() {
+	private String findLocalBase() {
 		if(this.customMapping != null && this.resolver.exists(this.customMapping)) {
 			return this.customMapping;
 		}
@@ -125,6 +135,9 @@ public abstract class AbstractSharedStagingArea implements StagingArea {
 			if(this.resolver.exists(mapping)) {
 				return mapping;
 			}
+		}
+		if(this.resolver.exists(sharedBaseURI)) { // some are shared and local, i.e. iRODS
+			return sharedBaseURI;
 		}
 		return null;
 	}
@@ -135,10 +148,14 @@ public abstract class AbstractSharedStagingArea implements StagingArea {
 
 	public void setCustomMapping(String localURL) {
 		this.customMapping = localURL;
-		String mapping = findLocalMapping();
+		String mapping = findLocalBase();
 		if(mapping != null) {
-			this.resolvedMapping = mapping;
+			this.localBaseURI = mapping;
 		}
+	}
+	
+	public String getCustomMapping() {
+		return this.customMapping;
 	}
 	
 	/**
@@ -146,14 +163,22 @@ public abstract class AbstractSharedStagingArea implements StagingArea {
 	 * @param stagedFileURI a URI representing a file in this stage
 	 * @return the path
 	 */
-	abstract String getRelativePath(String stagedFileURI);
-	
-	/**
-	 * Convert the local URL for a staged file into a URI within the namespace of this stage.
-	 * The local URL must be within the resolved local mapping URL.
-	 * @param localURL
-	 * @return
-	 */
-	abstract String makeStagedFileURI(String localURL);
+	public String getRelativePath(String stagedFileURI) {
+		return this.uriPattern.getRelativePath(this.sharedBaseURI, stagedFileURI);
+	}
+
+	public String getLocalURL(String stagedURI) {
+		String relativePath = this.getRelativePath(stagedURI);
+		return this.localBaseURI+relativePath;
+	}
+
+	public boolean isWithin(String stagedURI) {
+		return this.uriPattern.isWithin(this.sharedBaseURI, stagedURI);
+	}
+
+	public String getSharedURI(String localURL) {
+		String relativePath = localURL.substring(this.localBaseURI.length());
+		return this.uriPattern.makeURI(sharedBaseURI, relativePath);
+	}
 
 }
