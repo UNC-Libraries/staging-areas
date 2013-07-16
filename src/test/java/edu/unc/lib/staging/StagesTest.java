@@ -38,7 +38,7 @@ public class StagesTest {
 	
 	@Test
 	public void testParsedJSON() {
-		assertTrue("4 staging areas must have been loaded", this.stages.getAreas().size() == 4);
+		assertTrue("4 staging areas must have been loaded", this.stages.getAllAreas().size() == 4);
 	}
 	
 	@Test

@@ -18,5 +18,5 @@
     	"tag:cdr.lib.unc.edu,2013:/storhouse_shc/":"file:/Z:/in_process/",
     	"tag:cdr.lib.unc.edu,2013:/digitalarchive/":"file:/H:/"
     },
-    "remoteConfigurations": ["file:src/test/resources/stages.json"]
+    "repositoryConfigurations": ["file:src/test/resources/stages.json"]
 }

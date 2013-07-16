@@ -20,34 +20,72 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class Stages {
 	Logger log = LoggerFactory.getLogger(Stages.class);
-	private List<String> remoteConfigURLs;
-	private Map<String, SharedStagingArea> areas = new HashMap<String, SharedStagingArea>();
+	private List<String> repositoryConfigURLs = new ArrayList<String>();
+	private Map<String, Map<String, SharedStagingArea>> areas = new HashMap<String, Map<String, SharedStagingArea>>();
 	private List<URIPattern> uriPatterns;
 	private LocalResolver resolver;
 	private String localConfig;
 	private Map<String, String> customMappings = new HashMap<String, String>();
 
-	public Stages(String localConfig,
-			LocalResolver resolver, List<URIPattern> uriPatterns) throws StagingException {
+	public Stages(String localConfig, LocalResolver resolver)
+			throws StagingException {
+		this(localConfig, resolver, loadPatterns());
+	}
+
+	public Stages(String localConfig, LocalResolver resolver,
+			List<URIPattern> uripatterns) throws StagingException {
 		this.resolver = resolver;
-		this.uriPatterns = uriPatterns;
+		this.uriPatterns = uripatterns;
 		this.localConfig = localConfig;
 		if (localConfig != null) {
 			loadLocalConfig();
 		}
-		for (String configURL : this.remoteConfigURLs) {
+		for (String configURL : this.repositoryConfigURLs) {
 			loadStages(configURL);
 		}
 	}
 
-	public Map<String, StagingArea> getAreas() {
-		Map<String, StagingArea> result = new HashMap<String, StagingArea>();
-		result.putAll(areas);
+	public void addRepositoryConfigURL(String remoteConfigURL)
+			throws StagingException {
+		// can be a full URL to JSON or a repository base URL
+		if (!remoteConfigURL.endsWith("stagingLocations")) {
+			if (!remoteConfigURL.endsWith("/")) {
+				remoteConfigURL = remoteConfigURL + "/";
+			}
+			remoteConfigURL = remoteConfigURL + "stagingLocations";
+		}
+		loadStages(remoteConfigURL);
+		this.repositoryConfigURLs.add(remoteConfigURL);
+	}
+
+	public void removeRepositoryConfigURL(String repositoryConfigURL) {
+		this.repositoryConfigURLs.remove(repositoryConfigURL);
+		this.areas.remove(repositoryConfigURL);
+	}
+
+	private static List<URIPattern> loadPatterns() {
+		ArrayList<URIPattern> result = new ArrayList<URIPattern>();
+		result.add(new IrodsURIPattern());
+		result.add(new TagURIPattern());
+		return result;
+	}
+
+	public Map<String, SharedStagingArea> getAllAreas() {
+		Map<String, SharedStagingArea> result = new HashMap<String, SharedStagingArea>();
+		for (Map<String, SharedStagingArea> val : this.areas.values()) {
+			result.putAll(val);
+		}
 		return Collections.unmodifiableMap(result);
+	}
+
+	public Map<String, SharedStagingArea> getAreas(String repositoryConfigURL) {
+		return Collections.unmodifiableMap(this.areas.get(repositoryConfigURL));
 	}
 
 	@SuppressWarnings("unchecked")
 	private void loadLocalConfig() throws StagingException {
+		Map<String, SharedStagingArea> localAreas = new HashMap<String, SharedStagingArea>();
+		this.areas.put("LOCAL", localAreas);
 		try {
 			JsonNode rnode;
 			ObjectMapper om = new ObjectMapper();
@@ -56,20 +94,22 @@ public class Stages {
 				this.customMappings = om.treeToValue(
 						rnode.get("customMappings"), Map.class);
 			}
+			if (rnode.has("repositoryConfigurations")) {
+				JsonNode rconfigs = rnode.get("repositoryConfigurations");
+				repositoryConfigURLs = new ArrayList<String>(rconfigs.size());
+				for (int i = 0; i < rconfigs.size(); i++) {
+					repositoryConfigURLs.add(rconfigs.get(i).asText());
+				}
+			}
 			if (rnode.has("stagingAreas")) {
 				JsonNode node = rnode.get("stagingAreas");
 				for (Iterator<String> areaIter = node.fieldNames(); areaIter
 						.hasNext();) {
 					String uri = areaIter.next();
 					JsonNode areaNode = node.get(uri);
-					addStagingArea(om, uri, areaNode, "LOCAL");
-				}
-			}
-			if(rnode.has("remoteConfigurations")) {
-				JsonNode rconfigs = rnode.get("remoteConfigurations");
-				remoteConfigURLs = new ArrayList<String>(rconfigs.size());
-				for(int i = 0; i < rconfigs.size(); i++) {
-					remoteConfigURLs.add(rconfigs.get(i).asText());
+					SharedStagingArea stage = parseStagingArea(om, uri,
+							areaNode, "LOCAL");
+					localAreas.put(uri, stage);
 				}
 			}
 		} catch (IOException e) {
@@ -78,21 +118,23 @@ public class Stages {
 		}
 	}
 
-	private void addStagingArea(ObjectMapper om, String uri, JsonNode areaNode,
-			String origin) throws StagingException {
+	private SharedStagingArea parseStagingArea(ObjectMapper om, String uri,
+			JsonNode areaNode, String origin) throws StagingException {
 		try {
-			if(areas.containsKey(uri)) return;
+			@SuppressWarnings("unused")
 			URI u = new URI(uri);
-			SharedStagingArea stage = om.treeToValue(areaNode, SharedStagingArea.class);
-			for(URIPattern p : uriPatterns) {
-				if(p.matches(uri)) {
+			SharedStagingArea stage = om.treeToValue(areaNode,
+					SharedStagingArea.class);
+			for (URIPattern p : uriPatterns) {
+				if (p.matches(uri)) {
 					stage.setUriPattern(p);
 					break;
 				}
 			}
-			if(stage.getUriPattern() == null) {
-				log.error("Cannot find a URI pattern for stage: "+stage.getUri());
-				return;
+			if (stage.getUriPattern() == null) {
+				throw new StagingException(
+						"Cannot find a URI pattern for stage: "
+								+ stage.getUri());
 			}
 			stage.setOrigin(origin);
 			stage.setUri(uri);
@@ -101,14 +143,18 @@ public class Stages {
 				stage.setCustomMapping(this.customMappings.get(uri));
 			}
 			stage.init();
-			areas.put(stage.getUri(), stage);
+			return stage;
 		} catch (JsonProcessingException e) {
-			log.error("Cannot parse staging area config '"+uri+"' ("+origin+")", e);
-			return;
+			throw new StagingException("Cannot parse staging area config '"
+					+ uri + "' (" + origin + ")", e);
 		} catch (URISyntaxException e) {
-			log.error("Staging area URI is invalid '"+uri+"' ("+origin+")", e);
-			return;
+			throw new StagingException("Staging area URI is invalid '" + uri
+					+ "' (" + origin + ")", e);
 		}
+	}
+
+	public List<String> getRepositoryConfigURLs() {
+		return Collections.unmodifiableList(this.repositoryConfigURLs);
 	}
 
 	/**
@@ -119,37 +165,55 @@ public class Stages {
 	 * @return
 	 */
 	public String getLocalConfig() {
-		throw new IllegalArgumentException();
+		StringBuilder result = new StringBuilder();
+		result.append("{\n");
+		ObjectMapper om = new ObjectMapper();
+		try {
+			// customMappings
+			result.append("\"customMappings\":");
+			result.append(om.writeValueAsString(this.customMappings)).append(
+					",\n");
+			// repositoryConfigurations
+			result.append("\"repositoryConfigurations\":");
+			result.append(om.writeValueAsString(this.repositoryConfigURLs))
+					.append("\n");
+			// TODO stagingAreas
+		} catch (JsonProcessingException ignored) {
+		}
+		result.append("}");
+		return result.toString();
 	}
 
-	public void setCustomMapping(String stageURI, String localURI) throws StagingException {
-		if (this.areas.get(stageURI) != null) {
+	public void setCustomMapping(String stageURI, String localURI)
+			throws StagingException {
+		if (getAllAreas().get(stageURI) != null) {
 			this.customMappings.put(stageURI, localURI);
-			this.areas.get(stageURI).setCustomMapping(localURI);
+			getAllAreas().get(stageURI).setCustomMapping(localURI);
 		} else {
-			throw new StagingException("No configuration found for the stage with id: "+stageURI );
+			throw new StagingException(
+					"No configuration found for the stage with id: " + stageURI);
 		}
 	}
 
-	private void loadStages(String configURL) {
+	private void loadStages(String configURL) throws StagingException {
 		JsonNode node;
 		ObjectMapper om = new ObjectMapper();
 		try {
 			URL config = new URL(configURL);
 			node = om.readTree(config.openStream());
 		} catch (IOException e) {
-			e.printStackTrace(); // FIXME
-			return;
+			throw new StagingException("Cannot load config from " + configURL,
+					e);
 		}
+		HashMap<String, SharedStagingArea> stages = new HashMap<String, SharedStagingArea>();
 		for (Iterator<String> areaIter = node.fieldNames(); areaIter.hasNext();) {
 			String uri = areaIter.next();
 			JsonNode areaNode = node.get(uri);
-			try {
-				this.addStagingArea(om, uri, areaNode, configURL);
-			} catch(StagingException e) {
-				log.error("Cannot load stage '"+uri+"' from config at "+configURL, e);
-			}
+			SharedStagingArea stage = this.parseStagingArea(om, uri, areaNode,
+					configURL);
+			stages.put(uri, stage);
 		}
+		areas.put(configURL, stages);
 	}
 
 	/**
@@ -161,9 +225,7 @@ public class Stages {
 		String result = null;
 		List<StagingArea> possible = new ArrayList<StagingArea>();
 		// look through the staging areas, see if id matches above
-		for (StagingArea area : areas.values()) {
-			// FIXME this really needs to be pattern based, i.e. tag and irods
-			// URIs have more variety within a stage
+		for (StagingArea area : this.getAllAreas().values()) {
 			if (area.isWithin(stagedURI)) {
 				possible.add(area);
 			}
@@ -214,8 +276,18 @@ public class Stages {
 		return result;
 	}
 
-	public StagingArea getStage(String string) {
-		return this.areas.get(string);
+	public StagingArea getStage(String baseURI) {
+		StagingArea result = null;
+		if (this.areas.get("LOCAL").containsKey(baseURI)) {
+			return this.areas.get("LOCAL").get(baseURI);
+		}
+		for (Map<String, SharedStagingArea> val : this.areas.values()) {
+			if (val.containsKey(baseURI)) {
+				result = val.get(baseURI);
+				break;
+			}
+		}
+		return result;
 	}
 
 }
