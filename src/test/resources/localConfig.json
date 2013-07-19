@@ -5,12 +5,10 @@
 			"mappings":[
 			    "irods:cdr-stage.lib.unc.edu:5555/stagingZone/home/count0"
 			],
-			"putPattern":"${project}/${uuid}",
 			"ingestCleanupPolicy":"DELETE_INGESTED_FILES"
 		},
-	    "irods:cdr-stage.lib.unc.edu:5555/stagingZone/home/stage/alpha/":{
-	        "name":"My Override iRODS Stage Alpha",
-	        "putPattern":"${project}/${uuid}",
+	    "irods://cdr-stage.lib.unc.edu:3333/stagingZone/projects":{
+	        "name":"My Override iRODS Stage for Projects",
 	        "ingestCleanupPolicy":"DELETE_INGESTED_FILES"
 	    }
 	},

@@ -1,13 +1,15 @@
 package edu.unc.lib.staging;
 
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,7 +35,7 @@ public class StagesTest {
 		List<URIPattern> patterns = new ArrayList<URIPattern>();
 		patterns.add(new TagURIPattern());
 		patterns.add(new IrodsURIPattern());
-		this.stages = new Stages(sb.toString(), new FileResolver(), patterns);
+		this.stages = new Stages(sb.toString(), new FileResolver());
 	}
 	
 	@Test
@@ -43,34 +45,43 @@ public class StagesTest {
 	
 	@Test
 	public void testCustomMappingsLoaded() {
-		String stageId = "tag:cdr.lib.unc.edu,2013:/storhouse_shc/";
+		URI stageId = URI.create("tag:cdr.lib.unc.edu,2013:/storhouse_shc/");
 		String customMapping = "file:/Z:/in_process/";
-		String foundMapping = ((SharedStagingArea)this.stages.getStage(stageId)).getCustomMapping();
-		assertTrue("Mapping must match local JSON config", customMapping.equals(foundMapping));
+		SharedStagingArea stage = (SharedStagingArea)this.stages.getStage(stageId);
+		assertNotNull("Must have located a stage "+stage, stage);
+		URL foundMapping = stage.getCustomMapping();
+		assertNotNull("Must have located a mapping for "+stageId, foundMapping);
+		System.err.println(foundMapping.toString());
+		System.err.println(customMapping);
+		assertTrue("Mapping must match local JSON config", customMapping.equals(foundMapping.toString()));
 	}
 	
 	@Test
 	public void testLocalStageDefinitionsOverrideRemote() {
-		StagingArea override = this.stages.getStage("irods:cdr-stage.lib.unc.edu:5555/stagingZone/home/stage/alpha/");
-		assertTrue("Local definitions must take precendence over remote.", "My Override iRODS Stage Alpha".equals(override.getName()));
+		URI test = URI.create("irods://cdr-stage.lib.unc.edu:3333/stagingZone/projects");
+		StagingArea override = this.stages.getStage(test);
+		assertTrue("Local definitions must take precendence over remote.", "My Override iRODS Stage for Projects".equals(override.getName()));
+	}
+	
+	/**
+	 * Make sure that additional local mappings can be configured and then exported to JSON
+	 */
+	@Test
+	public void testCustomLocalMappingUpdateAndExport() throws StagingException {
+		String config = this.stages.getLocalConfig();
+		Stages test = new Stages(config, new FileResolver());
 	}
 	
 	@Test
-	public void testCustomLocalMappingUpdateAndExport() {
-		// make sure that additional local mappings can be configured and then exported to JSON	
-		fail("not implemented");
-	}
-	
-	@Test
-	public void testLocalFileResolvesFromRemoteConfig() throws StagingException, URISyntaxException {
+	public void testLocalFileResolvesFromRemoteConfig() throws StagingException, URISyntaxException, MalformedURLException {
 		String lDir = new File("src/test/resources/").toURI().toString();
 		lDir = lDir.substring(0, lDir.length());
-		this.stages.setCustomMapping("tag:cdr.lib.unc.edu,2013:/storhouse_shc/", lDir);
+		this.stages.setCustomMapping(URI.create("tag:cdr.lib.unc.edu,2013:/storhouse_shc/"), URI.create(lDir).toURL());
 		File f = new File("src/test/resources/local.txt");
 		URI uri = f.toURI();
-		String local = this.stages.getLocalURL("tag:cdr.lib.unc.edu,2013:/storhouse_shc/local.txt");
+		URL local = this.stages.getLocalURL(URI.create("tag:cdr.lib.unc.edu,2013:/storhouse_shc/local.txt"));
 		assertTrue("Returned local URL must not be null.", local != null);
-		boolean match = uri.equals(new URI(local));
+		boolean match = uri.equals(local.toURI());
 		assertTrue("Local mapping "+local+" must match expected path "+uri, match);
 	}
 	

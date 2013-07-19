@@ -1,5 +1,8 @@
 package edu.unc.lib.staging;
 
+import java.net.URI;
+import java.net.URL;
+
 
 public interface StagingArea {
 
@@ -7,7 +10,7 @@ public interface StagingArea {
 	 * URI that identifies this staging area
 	 * @return
 	 */
-	public abstract String getUri();
+	public abstract URI getURI();
 
 	/**
 	 * Name of this staging area.
@@ -27,31 +30,27 @@ public interface StagingArea {
 	 */
 	public abstract boolean isConnected();
 
-	/**
-	 * Is this the local mapping for this stage verified by the presence of a key file?
-	 * @return
-	 */
-	public abstract boolean isVerified();
+	public abstract String getStatus();
 
 	/**
-	 * Converts the stagedURI into a locally resolvable URL.
-	 * @param stagedURI
+	 * Converts a manifest URI into a locally resolvable URL.
+	 * @param manifestURI
 	 * @return a URL
 	 */
-	public abstract String getLocalURL(String stagedURI);
+	public abstract URL getStagedURL(URI manifestURI);
 
 	/**
-	 * Does this staged file URI match the staging area.
-	 * @param stagedURI a staged file URI
-	 * @return true if URI 
+	 * Does this manifest URI match this staging area.
+	 * @param manifestURI a manifest URI
+	 * @return true if manifestURI falls within the staging area
 	 */
-	public abstract boolean isWithin(String stagedURI);
+	public abstract boolean isWithin(URI manifestURI);
 
 	/**
-	 * Creates a shared staged file reference for a local file.
+	 * Creates a manifest reference for a staged file location.
 	 * @param testFile
 	 * @return
 	 */
-	public abstract String getSharedURI(String localURL);
+	public abstract URI getManifestURI(URL stagedURL);
 
 }

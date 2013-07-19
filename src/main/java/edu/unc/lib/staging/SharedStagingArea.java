@@ -1,8 +1,11 @@
 package edu.unc.lib.staging;
 
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URL;
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
-
 
 /**
  * These are staging areas common to a work group. Files staged in these spaces
@@ -13,17 +16,33 @@ import java.util.List;
  */
 /**
  * @author count0
- *
+ * 
  */
 public class SharedStagingArea implements StagingArea {
-	transient String configURL; // injected at runtime
-	String sharedBaseURI;
-	transient String localBaseURI; // determined at runtime
+	transient URL configURL; // injected at runtime
+	URI uRI;
+	transient URL localBaseURL; // determined at runtime
 	String name;
 	CleanupPolicy ingestCleanupPolicy;
 	String keyFile;
 	transient URIPattern uriPattern; // determined at runtime
-	
+
+	private static final String disconnectedStatus = Messages
+			.getString("SharedStagingArea.Disconnected"); //$NON-NLS-1$
+	private static final String notAutoconnectedStatus = Messages
+			.getString("SharedStagingArea.NotAutoconnected"); //$NON-NLS-1$
+	private static final String notVerifiedStatus = Messages
+			.getString("SharedStagingArea.Unverified"); //$NON-NLS-1$
+	private static final String failedStatus = Messages
+			.getString("SharedStagingArea.ConnectionFailed"); //$NON-NLS-1$
+	private static final String connectedStatus = Messages
+			.getString("SharedStagingArea.Connected"); //$NON-NLS-1$
+	private static final String connectedVerifiedStatus = Messages
+			.getString("SharedStagingArea.ConnectedVerified"); //$NON-NLS-1$
+
+	private boolean isConnected = false;
+	private String status = disconnectedStatus;
+
 	public URIPattern getUriPattern() {
 		return this.uriPattern;
 	}
@@ -32,7 +51,9 @@ public class SharedStagingArea implements StagingArea {
 		this.uriPattern = p;
 	}
 
-	/* (non-Javadoc)
+	/*
+	 * (non-Javadoc)
+	 * 
 	 * @see edu.unc.lib.staging.StagingArea#getKeyFile()
 	 */
 	public String getKeyFile() {
@@ -43,39 +64,46 @@ public class SharedStagingArea implements StagingArea {
 		this.keyFile = keyFile;
 	}
 
-	String putPattern;
-	List<String> mappings = new ArrayList<String>();
-	String customMapping;
+	List<URL> mappings = new ArrayList<URL>();
+	URL customMapping;
 	private LocalResolver resolver;
-	
+
 	public void init() throws StagingException {
-		this.localBaseURI = findLocalBase();
+		if (this.uriPattern.isAutoconnected()) {
+			connect();
+		} else {
+			this.status = notAutoconnectedStatus;
+		}
 	}
 
-	public void setOrigin(String configURL) {
-		this.configURL = configURL;
-	}
-
-	public String getConfigURL() {
+	public URL getConfigURL() {
 		return configURL;
 	}
 
-	public void setConfigURL(String configURL) {
+	public void setConfigURL(URL configURL) {
 		this.configURL = configURL;
 	}
 
-	/* (non-Javadoc)
+	public URL getLocalBaseURL() {
+		return this.localBaseURL;
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
 	 * @see edu.unc.lib.staging.StagingArea#getUri()
 	 */
-	public String getUri() {
-		return sharedBaseURI;
+	public URI getURI() {
+		return uRI;
 	}
 
-	public void setUri(String uri) {
-		this.sharedBaseURI = uri;
+	public void setUri(URI uri) {
+		this.uRI = uri;
 	}
 
-	/* (non-Javadoc)
+	/*
+	 * (non-Javadoc)
+	 * 
 	 * @see edu.unc.lib.staging.StagingArea#getName()
 	 */
 	public String getName() {
@@ -86,7 +114,9 @@ public class SharedStagingArea implements StagingArea {
 		this.name = name;
 	}
 
-	/* (non-Javadoc)
+	/*
+	 * (non-Javadoc)
+	 * 
 	 * @see edu.unc.lib.staging.StagingArea#getIngestCleanupPolicy()
 	 */
 	public CleanupPolicy getIngestCleanupPolicy() {
@@ -97,88 +127,167 @@ public class SharedStagingArea implements StagingArea {
 		this.ingestCleanupPolicy = ingestCleanupPolicy;
 	}
 
-	/* (non-Javadoc)
-	 * @see edu.unc.lib.staging.StagingArea#getPutPattern()
-	 */
-	public String getPutPattern() {
-		return putPattern;
-	}
-
-	public void setPutPattern(String putPattern) {
-		this.putPattern = putPattern;
-	}
-
-	/* (non-Javadoc)
+	/*
+	 * (non-Javadoc)
+	 * 
 	 * @see edu.unc.lib.staging.StagingArea#getMappings()
 	 */
-	public List<String> getMappings() {
+	public List<URL> getMappings() {
 		return mappings;
 	}
 
-	public void setMappings(List<String> mappings) {
+	public void setMappings(List<URL> mappings) {
 		this.mappings = mappings;
 	}
 
 	public boolean isConnected() {
-		return (localBaseURI != null && this.resolver.exists(localBaseURI));
+		return isConnected;
 	}
 
-	public boolean isVerified() {
-		return (this.keyFile != null && this.resolver.exists(localBaseURI+"/"+this.keyFile));
-	}
-	
-	private String findLocalBase() {
-		if(this.customMapping != null && this.resolver.exists(this.customMapping)) {
-			return this.customMapping;
-		}
-		for(String mapping : this.mappings) {
-			if(this.resolver.exists(mapping)) {
-				return mapping;
+	public void connect() {
+		this.status = disconnectedStatus;
+		this.isConnected = false;
+		if (this.customMapping != null) {
+			if (this.resolver.exists(this.customMapping)) {
+				this.localBaseURL = this.customMapping;
+				this.isConnected = true;
+				this.status = connectedStatus;
+			} else {
+				this.status = MessageFormat.format(failedStatus,
+						"Custom mapping unreachable (" + this.customMapping
+								+ ")");
+				return;
 			}
 		}
-		if(this.resolver.exists(sharedBaseURI)) { // some are shared and local, i.e. iRODS
-			return sharedBaseURI;
+		if (!this.isConnected) {
+			if (this.mappings != null && this.mappings.size() > 0) {
+				for (URL mapping : this.mappings) {
+					if (this.resolver.exists(mapping)) {
+						this.localBaseURL = mapping;
+						this.isConnected = true;
+						this.status = connectedStatus;
+						break;
+					}
+				}
+				this.status = MessageFormat.format(failedStatus,
+						"Common folder mappings not found.");
+				return;
+			}
 		}
-		return null;
+
+		// not a mapped thing
+		if (!this.isConnected && !this.uriPattern.isLocallyMapped()) {
+			URL testURL = null;
+			try {
+				testURL = new URL(uRI.toString());
+			} catch (MalformedURLException e) {
+				// fail: Stage URI does not resolve to a known location
+				this.status = MessageFormat
+						.format(failedStatus, e.getMessage());
+				return;
+			}
+			if (this.resolver.exists(testURL)) {
+				// some are shared and local, i.e. iRODS
+				try {
+					this.localBaseURL = this.uriPattern.makeURI(uRI, "")
+							.toURL();
+					this.isConnected = true;
+					this.status = connectedStatus;
+				} catch (MalformedURLException unexpected) {
+					throw new Error(unexpected);
+				}
+			}
+		}
+
+		if (!this.isConnected) {
+			this.status = MessageFormat.format(failedStatus, "Not found");
+			return;
+		}
+
+		// Verify if applicable
+		if (this.keyFile != null) {
+			try {
+				URL keyFileURL = new URL(localBaseURL, this.keyFile);
+				if (this.resolver.exists(keyFileURL)) {
+					this.status = connectedVerifiedStatus;
+					return;
+				} else {
+					this.isConnected = false;
+					this.status = MessageFormat.format(notVerifiedStatus,
+							localBaseURL, this.keyFile);
+				}
+			} catch (MalformedURLException e) {
+				this.isConnected = false;
+				this.status = MessageFormat
+						.format(failedStatus, e.getMessage());
+			}
+		}
 	}
 
 	public void setResolver(LocalResolver resolver) {
 		this.resolver = resolver;
 	}
 
-	public void setCustomMapping(String localURL) {
+	protected void setCustomMapping(URL localURL) {
 		this.customMapping = localURL;
-		String mapping = findLocalBase();
-		if(mapping != null) {
-			this.localBaseURI = mapping;
-		}
+		connect();
 	}
-	
-	public String getCustomMapping() {
+
+	public URL getCustomMapping() {
 		return this.customMapping;
 	}
-	
+
 	/**
-	 * Parse the staged file URI and extract the path relative to the staging area base URI.
-	 * @param stagedFileURI a URI representing a file in this stage
+	 * Parse the staged file URI and extract the path relative to the staging
+	 * area base URI.
+	 * 
+	 * @param stagedFileURI
+	 *            a URI representing a file in this stage
 	 * @return the path
 	 */
-	public String getRelativePath(String stagedFileURI) {
-		return this.uriPattern.getRelativePath(this.sharedBaseURI, stagedFileURI);
+	public String getRelativePath(URI stagedFileURI) {
+		return this.uriPattern.getRelativePath(this.uRI, stagedFileURI);
 	}
 
-	public String getLocalURL(String stagedURI) {
+	public URL getStagedURL(URI stagedURI) {
 		String relativePath = this.getRelativePath(stagedURI);
-		return this.localBaseURI+relativePath;
+		if (relativePath.startsWith("/"))
+			relativePath = relativePath.substring(1);
+		try {
+			if (this.localBaseURL.toString().endsWith("/")) {
+				return URI.create(this.localBaseURL.toString() + relativePath)
+						.toURL();
+			} else {
+				return URI.create(
+						this.localBaseURL.toString() + "/" + relativePath)
+						.toURL();
+			}
+		} catch (MalformedURLException e) {
+			throw new Error(e);
+		}
 	}
 
-	public boolean isWithin(String stagedURI) {
-		return this.uriPattern.isWithin(this.sharedBaseURI, stagedURI);
+	public boolean isWithin(URI stagedURI) {
+		return this.uriPattern.isWithin(this.uRI, stagedURI);
 	}
 
-	public String getSharedURI(String localURL) {
-		String relativePath = localURL.substring(this.localBaseURI.length());
-		return this.uriPattern.makeURI(sharedBaseURI, relativePath);
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see edu.unc.lib.staging.StagingArea#getSharedURI(java.lang.String)
+	 */
+	public URI getManifestURI(URL stagedURL) {
+		String relativePath = stagedURL.toString().substring(
+				this.localBaseURL.toString().length());
+		return this.uriPattern.makeURI(uRI, relativePath);
+	}
+
+	public URI makeURI(String relativePath) {
+		return this.uriPattern.makeURI(uRI, relativePath);
+	}
+
+	public String getStatus() {
+		return this.status;
 	}
 
 }
