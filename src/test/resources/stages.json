@@ -5,7 +5,7 @@
             "file:/H:/",
             "file:/Volume/DA/"
         ],
-        "keyFile":".tag_a8cf4064",
+        "confirmFile":".tag_a8cf4064",
         "ingestCleanupPolicy":"DELETE_INGESTED_FILES_EMPTY_FOLDERS"
     },
     "tag:cdr.lib.unc.edu,2013:/storhouse_shc/":{
@@ -14,7 +14,7 @@
             "file:/P:/in_process",
             "file:/Volume/storhouse/in_process"
         ],
-        "keyFile":"tag_7a882b56",
+        "confirmFile":"tag_7a882b56",
         "ingestCleanupPolicy":"DO_NOTHING"
     },
     "irods://cdr-stage.lib.unc.edu:3333/stagingZone/projects":{

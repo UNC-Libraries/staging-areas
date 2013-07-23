@@ -1,5 +1,7 @@
 package edu.unc.lib.staging;
 
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -27,22 +29,27 @@ public class Stages {
 	private String localConfig;
 	private Map<URI, URL> customMappings = new HashMap<URI, URL>();
 	public static URL LOCAL_CONFIG_URL = null;
-	
+
+	// you can listen
+	private List<PropertyChangeListener> listener = new ArrayList<PropertyChangeListener>();
+
 	static {
 		try {
 			LOCAL_CONFIG_URL = new URL("http://localhost/stagingLocations");
-		} catch(MalformedURLException e) {
+		} catch (MalformedURLException e) {
 			throw new Error(e);
 		}
 	}
 
-	public Stages(String localConfig, LocalResolver resolver) throws StagingException {
+	public Stages(String localConfig, LocalResolver resolver)
+			throws StagingException {
 		this.resolver = resolver;
-		if(resolver.getURLStreamHandlerFactory() != null) {
+		if (resolver.getURLStreamHandlerFactory() != null) {
 			try {
-				URL.setURLStreamHandlerFactory(resolver.getURLStreamHandlerFactory());
-			} catch(SecurityException ignored) {
-			} catch(Error ignored) {
+				URL.setURLStreamHandlerFactory(resolver
+						.getURLStreamHandlerFactory());
+			} catch (SecurityException ignored) {
+			} catch (Error ignored) {
 			}
 		}
 		this.uriPatterns = loadPatterns();
@@ -68,6 +75,7 @@ public class Stages {
 			URL config = new URL(remoteConfigURL);
 			loadStages(config);
 			this.repositoryConfigURLs.add(config);
+			notifyListeners();
 		} catch (MalformedURLException e) {
 			throw new StagingException("Not a URL", e);
 		}
@@ -76,6 +84,7 @@ public class Stages {
 	public void removeRepositoryConfigURL(String repositoryConfigURL) {
 		this.repositoryConfigURLs.remove(repositoryConfigURL);
 		this.areas.remove(repositoryConfigURL);
+		notifyListeners();
 	}
 
 	private static List<URIPattern> loadPatterns() {
@@ -106,11 +115,12 @@ public class Stages {
 			ObjectMapper om = new ObjectMapper();
 			rnode = om.readTree(this.localConfig);
 			if (rnode.has("customMappings")) {
-				Map mappings = om.treeToValue(
-						rnode.get("customMappings"), Map.class);
-				for(Object key : mappings.keySet()) {
-					URI stageURI = URI.create((String)key);
-					URL mappedURL = URI.create((String)mappings.get(key)).toURL();
+				Map mappings = om.treeToValue(rnode.get("customMappings"),
+						Map.class);
+				for (Object key : mappings.keySet()) {
+					URI stageURI = URI.create((String) key);
+					URL mappedURL = URI.create((String) mappings.get(key))
+							.toURL();
 					this.customMappings.put(stageURI, mappedURL);
 				}
 			}
@@ -131,7 +141,7 @@ public class Stages {
 					URI uri = URI.create(uriStr);
 					SharedStagingArea stage = parseStagingArea(om, uri,
 							areaNode, LOCAL_CONFIG_URL);
-					if(this.customMappings.containsKey(uri)) {
+					if (this.customMappings.containsKey(uri)) {
 						stage.setCustomMapping(this.customMappings.get(uri));
 					}
 					localAreas.put(uri, stage);
@@ -209,6 +219,7 @@ public class Stages {
 		if (getAllAreas().get(stageURI) != null) {
 			this.customMappings.put(stageURI, localURL);
 			getAllAreas().get(stageURI).setCustomMapping(localURL);
+			notifyListeners();
 		} else {
 			throw new StagingException(
 					"No configuration found for the stage with id: " + stageURI);
@@ -231,7 +242,7 @@ public class Stages {
 			URI uri = URI.create(uriStr);
 			SharedStagingArea stage = this.parseStagingArea(om, uri, areaNode,
 					configURL);
-			if(this.customMappings.containsKey(uri)) {
+			if (this.customMappings.containsKey(uri)) {
 				stage.setCustomMapping(this.customMappings.get(uri));
 			}
 			stages.put(uri, stage);
@@ -292,6 +303,36 @@ public class Stages {
 			}
 		}
 		return result;
+	}
+
+	public SharedStagingArea findMatchingArea(URI stagedFileOrManifestURI) {
+		SharedStagingArea result = null;
+		for (SharedStagingArea area : getAllAreas().values()) {
+			if (area.isWithin(stagedFileOrManifestURI)) {
+				result = area;
+				break;
+			}
+		}
+		return result;
+	}
+	
+	public void connect(URI stageid) {
+		SharedStagingArea stage = this.getAllAreas().get(stageid);
+		if(stage != null) {
+			stage.connect();
+			notifyListeners();
+		}
+	}
+
+	protected void notifyListeners() {
+		for (PropertyChangeListener name : listener) {
+			name.propertyChange(new PropertyChangeEvent(this, "everything",
+					areas, areas));
+		}
+	}
+
+	public void addChangeListener(PropertyChangeListener newListener) {
+		listener.add(newListener);
 	}
 
 }

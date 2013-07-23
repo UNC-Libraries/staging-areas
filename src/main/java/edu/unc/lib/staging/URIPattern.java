@@ -53,5 +53,7 @@ public abstract class URIPattern {
 	 * @return true if this URI is a match
 	 */
 	public abstract boolean matches(URI uri);
+
+	public abstract String getScheme();
 	
 }

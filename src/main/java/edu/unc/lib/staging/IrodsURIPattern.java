@@ -1,6 +1,8 @@
 package edu.unc.lib.staging;
 
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -64,14 +66,25 @@ public class IrodsURIPattern extends URIPattern {
 		StringBuilder sb = new StringBuilder("irods://");
 		sb.append(user).append("@").append(mBase.group(hostIdx)).append(":")
 				.append(mBase.group(portIdx));
-		sb.append(mBase.group(pathIdx));
-		if(!mBase.group(pathIdx).endsWith("/")) sb.append("/");
-		sb.append(putPath);
+		String basePath = mBase.group(pathIdx);
+		sb.append(basePath.endsWith("/") ? basePath.substring(0, basePath.length()-1) : basePath);
+		try {
+			for(String seg : putPath.split("/")) {
+				sb.append("/").append(URLEncoder.encode(seg,"utf-8"));
+			}
+		} catch (UnsupportedEncodingException e) {
+			throw new Error(e);
+		}
 		return URI.create(sb.toString());
 	}
 
 	@Override
 	public boolean matches(URI uri) {
 		return uriPattern.matcher(uri.toString()).matches();
+	}
+
+	@Override
+	public String getScheme() {
+		return "irods";
 	}
 }

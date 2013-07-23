@@ -1,8 +1,10 @@
 package edu.unc.lib.staging;
 
+import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,7 +26,7 @@ public class SharedStagingArea implements StagingArea {
 	transient URL localBaseURL; // determined at runtime
 	String name;
 	CleanupPolicy ingestCleanupPolicy;
-	String keyFile;
+	String confirmFile;
 	transient URIPattern uriPattern; // determined at runtime
 
 	private static final String disconnectedStatus = Messages
@@ -56,12 +58,12 @@ public class SharedStagingArea implements StagingArea {
 	 * 
 	 * @see edu.unc.lib.staging.StagingArea#getKeyFile()
 	 */
-	public String getKeyFile() {
-		return keyFile;
+	public String getConfirmFile() {
+		return confirmFile;
 	}
 
-	public void setKeyFile(String keyFile) {
-		this.keyFile = keyFile;
+	public void setConfirmFile(String confirmFile) {
+		this.confirmFile = confirmFile;
 	}
 
 	List<URL> mappings = new ArrayList<URL>();
@@ -144,7 +146,7 @@ public class SharedStagingArea implements StagingArea {
 		return isConnected;
 	}
 
-	public void connect() {
+	protected void connect() {
 		this.status = disconnectedStatus;
 		this.isConnected = false;
 		if (this.customMapping != null) {
@@ -205,16 +207,16 @@ public class SharedStagingArea implements StagingArea {
 		}
 
 		// Verify if applicable
-		if (this.keyFile != null) {
+		if (this.confirmFile != null) {
 			try {
-				URL keyFileURL = new URL(localBaseURL, this.keyFile);
+				URL keyFileURL = new URL(localBaseURL, this.confirmFile);
 				if (this.resolver.exists(keyFileURL)) {
 					this.status = connectedVerifiedStatus;
 					return;
 				} else {
 					this.isConnected = false;
 					this.status = MessageFormat.format(notVerifiedStatus,
-							localBaseURL, this.keyFile);
+							localBaseURL, this.confirmFile);
 				}
 			} catch (MalformedURLException e) {
 				this.isConnected = false;
@@ -288,6 +290,44 @@ public class SharedStagingArea implements StagingArea {
 
 	public String getStatus() {
 		return this.status;
+	}
+
+	public String getScheme() {
+		return this.uriPattern.getScheme();
+	}
+
+	public URL makeStagedFileURL(String projectName, String originalPath) {
+		try {
+			List<String> pathSegments = new ArrayList<String>();
+			// combine base URL, project name and original path
+			String basePath = this.localBaseURL.getPath();
+			if (basePath != null) {
+				for (String s : basePath.split("/")) {
+					if (s.trim().length() > 0) {
+						pathSegments.add(s);
+					}
+				}
+			}
+			pathSegments.add(projectName);
+			for (String s : originalPath.split("/")) {
+				if (s.trim().length() > 0) {
+					pathSegments.add(s);
+				}
+			}
+			StringBuilder pathBuilder = new StringBuilder();
+			for (String s : pathSegments) {
+				pathBuilder.append("/").append(s);
+			}
+			String path = pathBuilder.toString();
+			if(!"file".equals(this.localBaseURL.getProtocol())) {
+				path = URLEncoder.encode(path, "utf-8");
+			}
+			return new URL(this.localBaseURL, pathBuilder.toString());
+		} catch (MalformedURLException e) {
+			throw new Error(e);
+		} catch (UnsupportedEncodingException e) {
+			throw new Error(e);
+		}
 	}
 
 }

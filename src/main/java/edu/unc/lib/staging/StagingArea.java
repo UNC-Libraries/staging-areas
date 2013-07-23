@@ -31,6 +31,10 @@ public interface StagingArea {
 	public abstract boolean isConnected();
 
 	public abstract String getStatus();
+	
+	public abstract String getScheme();
+	
+	public abstract URL makeStagedFileURL(String projectName, String originalPath);
 
 	/**
 	 * Converts a manifest URI into a locally resolvable URL.
