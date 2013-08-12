@@ -4,6 +4,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
+import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.text.MessageFormat;
 import java.util.ArrayList;
@@ -216,7 +217,7 @@ public class SharedStagingArea implements StagingArea {
 				} else {
 					this.isConnected = false;
 					this.status = MessageFormat.format(notVerifiedStatus,
-							localBaseURL, this.confirmFile);
+							localBaseURL, keyFileURL.toString());
 				}
 			} catch (MalformedURLException e) {
 				this.isConnected = false;
@@ -253,16 +254,18 @@ public class SharedStagingArea implements StagingArea {
 
 	public URL getStagedURL(URI stagedURI) {
 		String relativePath = this.getRelativePath(stagedURI);
+		try {
+			relativePath = URLDecoder.decode(relativePath, "utf-8");
+		} catch (UnsupportedEncodingException e1) {
+			throw new Error("Unexpected encoding exception", e1);
+		}
 		if (relativePath.startsWith("/"))
 			relativePath = relativePath.substring(1);
 		try {
 			if (this.localBaseURL.toString().endsWith("/")) {
-				return URI.create(this.localBaseURL.toString() + relativePath)
-						.toURL();
+				return new URL(this.localBaseURL.toString() + relativePath);
 			} else {
-				return URI.create(
-						this.localBaseURL.toString() + "/" + relativePath)
-						.toURL();
+				return new URL(this.localBaseURL.toString() + "/" + relativePath);
 			}
 		} catch (MalformedURLException e) {
 			throw new Error(e);

@@ -10,8 +10,6 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -32,9 +30,6 @@ public class StagesTest {
 		} finally {
 			if(r != null) r.close();
 		}
-		List<URIPattern> patterns = new ArrayList<URIPattern>();
-		patterns.add(new TagURIPattern());
-		patterns.add(new IrodsURIPattern());
 		this.stages = new Stages(sb.toString(), new FileResolver());
 	}
 	
@@ -69,7 +64,7 @@ public class StagesTest {
 	@Test
 	public void testCustomLocalMappingUpdateAndExport() throws StagingException {
 		String config = this.stages.getLocalConfig();
-		Stages test = new Stages(config, new FileResolver());
+		new Stages(config, new FileResolver());
 	}
 	
 	@Test

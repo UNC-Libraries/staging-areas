@@ -6,10 +6,12 @@ import java.net.URLConnection;
 import java.net.URLStreamHandler;
 import java.net.URLStreamHandlerFactory;
 
-public class IRODSURLStreamHandlerFactory implements URLStreamHandlerFactory {
+public class StagesURLStreamHandlerFactory implements URLStreamHandlerFactory {
 
 	public URLStreamHandler createURLStreamHandler(String protocol) {
 		if("irods".equals(protocol)) {
+			return new Handler();
+		} else if("tag".equals(protocol)) {
 			return new Handler();
 		} else {
 			return null;

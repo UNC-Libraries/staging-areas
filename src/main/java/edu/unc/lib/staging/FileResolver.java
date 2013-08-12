@@ -20,7 +20,7 @@ public class FileResolver implements LocalResolver {
 	}
 
 	public URLStreamHandlerFactory getURLStreamHandlerFactory() {
-		return new IRODSURLStreamHandlerFactory();
+		return new StagesURLStreamHandlerFactory();
 	}
 
 }

@@ -9,8 +9,6 @@ import java.util.Date;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.print.URIException;
-
 public class TagURIPattern extends URIPattern {
 	static final String regex = "tag:((.*)@)?([a-zA-Z0-9\\.]*),([0-9\\-]*):(/.*)?";
 	static final Pattern uriPattern = Pattern.compile(regex);

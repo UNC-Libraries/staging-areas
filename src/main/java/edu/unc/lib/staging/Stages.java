@@ -106,7 +106,6 @@ public class Stages {
 		return Collections.unmodifiableMap(this.areas.get(repositoryConfigURL));
 	}
 
-	@SuppressWarnings("unchecked")
 	private void loadLocalConfig() throws StagingException {
 		Map<URI, SharedStagingArea> localAreas = new HashMap<URI, SharedStagingArea>();
 		this.areas.put(LOCAL_CONFIG_URL, localAreas);
@@ -115,6 +114,7 @@ public class Stages {
 			ObjectMapper om = new ObjectMapper();
 			rnode = om.readTree(this.localConfig);
 			if (rnode.has("customMappings")) {
+				@SuppressWarnings("rawtypes")
 				Map mappings = om.treeToValue(rnode.get("customMappings"),
 						Map.class);
 				for (Object key : mappings.keySet()) {
@@ -156,7 +156,6 @@ public class Stages {
 	private SharedStagingArea parseStagingArea(ObjectMapper om, URI uri,
 			JsonNode areaNode, URL configURL) throws StagingException {
 		try {
-			@SuppressWarnings("unused")
 			SharedStagingArea stage = om.treeToValue(areaNode,
 					SharedStagingArea.class);
 			for (URIPattern p : uriPatterns) {
