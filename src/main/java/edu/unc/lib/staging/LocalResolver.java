@@ -1,6 +1,6 @@
 package edu.unc.lib.staging;
 
-import java.net.URL;
+import java.net.URI;
 import java.net.URLStreamHandlerFactory;
 
 /**
@@ -9,6 +9,6 @@ import java.net.URLStreamHandlerFactory;
  *
  */
 public interface LocalResolver {
-	public abstract boolean exists(URL locationURL);
+	public abstract boolean exists(URI locationURI);
 	public abstract URLStreamHandlerFactory getURLStreamHandlerFactory();
 }

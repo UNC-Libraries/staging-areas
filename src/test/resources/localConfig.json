@@ -7,9 +7,12 @@
 			],
 			"ingestCleanupPolicy":"DELETE_INGESTED_FILES"
 		},
-	    "irods://cdr-stage.lib.unc.edu:3333/stagingZone/projects":{
+	    "irods://cdr-stage.lib.unc.edu:3333/stagingZone/projects/":{
 	        "name":"My Override iRODS Stage for Projects",
 	        "ingestCleanupPolicy":"DELETE_INGESTED_FILES"
+	    },
+	    "data/":{
+	        "name":"Local BagIt Data Folder"
 	    }
 	},
     "customMappings" :{

@@ -5,7 +5,7 @@
             "file:/H:/",
             "file:/Volume/DA/"
         ],
-        "confirmFile":".tag_a8cf4064",
+        "confirmFile":"tag_7a882b56",
         "ingestCleanupPolicy":"DELETE_INGESTED_FILES_EMPTY_FOLDERS"
     },
     "tag:cdr.lib.unc.edu,2013:/storhouse_shc/":{
@@ -17,7 +17,7 @@
         "confirmFile":"tag_7a882b56",
         "ingestCleanupPolicy":"DO_NOTHING"
     },
-    "irods://cdr-stage.lib.unc.edu:3333/stagingZone/projects":{
+    "irods://cdr-stage.lib.unc.edu:3333/stagingZone/projects/":{
         "name":"Shared iRODS Stage for Projects",
         "ingestCleanupPolicy":"DELETE_INGESTED_FILES"
     }

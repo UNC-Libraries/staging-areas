@@ -1,11 +1,10 @@
 package edu.unc.lib.staging;
 
 import java.io.UnsupportedEncodingException;
-import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLDecoder;
-import java.net.URLEncoder;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,9 +21,10 @@ import java.util.List;
  * 
  */
 public class SharedStagingArea implements StagingArea {
+	transient Stages stages; // injected at runtime
 	transient URL configURL; // injected at runtime
 	URI uRI;
-	transient URL localBaseURL; // determined at runtime
+	transient URI connectedStorageURI; // determined at runtime
 	String name;
 	CleanupPolicy ingestCleanupPolicy;
 	String confirmFile;
@@ -67,8 +67,8 @@ public class SharedStagingArea implements StagingArea {
 		this.confirmFile = confirmFile;
 	}
 
-	List<URL> mappings = new ArrayList<URL>();
-	URL customMapping;
+	List<URI> mappings = new ArrayList<URI>();
+	URI storageMapping;
 	private LocalResolver resolver;
 
 	public void init() throws StagingException {
@@ -86,9 +86,13 @@ public class SharedStagingArea implements StagingArea {
 	public void setConfigURL(URL configURL) {
 		this.configURL = configURL;
 	}
+	
+	public void setStages(Stages stages) {
+		this.stages = stages;
+	}
 
-	public URL getLocalBaseURL() {
-		return this.localBaseURL;
+	public URI getConnectedStorageURI() {
+		return this.connectedStorageURI;
 	}
 
 	/*
@@ -135,11 +139,11 @@ public class SharedStagingArea implements StagingArea {
 	 * 
 	 * @see edu.unc.lib.staging.StagingArea#getMappings()
 	 */
-	public List<URL> getMappings() {
+	public List<URI> getMappings() {
 		return mappings;
 	}
 
-	public void setMappings(List<URL> mappings) {
+	public void setMappings(List<URI> mappings) {
 		this.mappings = mappings;
 	}
 
@@ -150,23 +154,23 @@ public class SharedStagingArea implements StagingArea {
 	protected void connect() {
 		this.status = disconnectedStatus;
 		this.isConnected = false;
-		if (this.customMapping != null) {
-			if (this.resolver.exists(this.customMapping)) {
-				this.localBaseURL = this.customMapping;
+		if (this.storageMapping != null) {
+			if (this.resolver.exists(this.storageMapping)) {
+				this.connectedStorageURI = this.storageMapping;
 				this.isConnected = true;
 				this.status = connectedStatus;
 			} else {
 				this.status = MessageFormat.format(failedStatus,
-						"Custom mapping unreachable (" + this.customMapping
+						"Custom mapping unreachable (" + this.storageMapping
 								+ ")");
 				return;
 			}
 		}
 		if (!this.isConnected) {
 			if (this.mappings != null && this.mappings.size() > 0) {
-				for (URL mapping : this.mappings) {
+				for (URI mapping : this.mappings) {
 					if (this.resolver.exists(mapping)) {
-						this.localBaseURL = mapping;
+						this.connectedStorageURI = mapping;
 						this.isConnected = true;
 						this.status = connectedStatus;
 						break;
@@ -178,27 +182,20 @@ public class SharedStagingArea implements StagingArea {
 			}
 		}
 
+		if (this.uriPattern instanceof RelativeURIPattern) {
+			this.connectedStorageURI = uRI;
+			this.isConnected = true;
+			this.status = connectedStatus;
+		}
+
 		// not a mapped thing
 		if (!this.isConnected && !this.uriPattern.isLocallyMapped()) {
-			URL testURL = null;
-			try {
-				testURL = new URL(uRI.toString());
-			} catch (MalformedURLException e) {
-				// fail: Stage URI does not resolve to a known location
-				this.status = MessageFormat
-						.format(failedStatus, e.getMessage());
-				return;
-			}
-			if (this.resolver.exists(testURL)) {
+			URI testURI = uRI;
+			if (this.resolver.exists(testURI)) {
 				// some are shared and local, i.e. iRODS
-				try {
-					this.localBaseURL = this.uriPattern.makeURI(uRI, "")
-							.toURL();
-					this.isConnected = true;
-					this.status = connectedStatus;
-				} catch (MalformedURLException unexpected) {
-					throw new Error(unexpected);
-				}
+				this.connectedStorageURI = this.uriPattern.makeURI(uRI, "");
+				this.isConnected = true;
+				this.status = connectedStatus;
 			}
 		}
 
@@ -209,20 +206,14 @@ public class SharedStagingArea implements StagingArea {
 
 		// Verify if applicable
 		if (this.confirmFile != null) {
-			try {
-				URL keyFileURL = new URL(localBaseURL, this.confirmFile);
-				if (this.resolver.exists(keyFileURL)) {
-					this.status = connectedVerifiedStatus;
-					return;
-				} else {
-					this.isConnected = false;
-					this.status = MessageFormat.format(notVerifiedStatus,
-							localBaseURL, keyFileURL.toString());
-				}
-			} catch (MalformedURLException e) {
+			URI keyFileURI = connectedStorageURI.resolve(this.confirmFile);
+			if (this.resolver.exists(keyFileURI)) {
+				this.status = connectedVerifiedStatus;
+				return;
+			} else {
 				this.isConnected = false;
-				this.status = MessageFormat
-						.format(failedStatus, e.getMessage());
+				this.status = MessageFormat.format(notVerifiedStatus,
+						connectedStorageURI, keyFileURI.toString());
 			}
 		}
 	}
@@ -231,43 +222,39 @@ public class SharedStagingArea implements StagingArea {
 		this.resolver = resolver;
 	}
 
-	protected void setCustomMapping(URL localURL) {
-		this.customMapping = localURL;
+	protected void setStorageMapping(URI localURI) {
+		this.storageMapping = localURI;
 		connect();
 	}
 
-	public URL getCustomMapping() {
-		return this.customMapping;
+	public URI getStorageMapping() {
+		return this.storageMapping;
 	}
 
 	/**
-	 * Parse the staged file URI and extract the path relative to the staging
+	 * Parse the manifest file URI and extract the decoded path relative to the staging
 	 * area base URI.
 	 * 
-	 * @param stagedFileURI
-	 *            a URI representing a file in this stage
+	 * @param manifestURI
+	 *            a manifest URI referencing a file in this stage
 	 * @return the path
 	 */
-	public String getRelativePath(URI stagedFileURI) {
-		return this.uriPattern.getRelativePath(this.uRI, stagedFileURI);
+	public String getRelativePath(URI manifestURI) {
+		return this.uriPattern.getRelativePath(this.uRI, manifestURI);
 	}
 
-	public URL getStagedURL(URI stagedURI) {
-		String relativePath = this.getRelativePath(stagedURI);
-		try {
-			relativePath = URLDecoder.decode(relativePath, "utf-8");
-		} catch (UnsupportedEncodingException e1) {
-			throw new Error("Unexpected encoding exception", e1);
-		}
+	public URI getStorageURI(URI manifestURI) {
+		String relativePath = this.getRelativePath(manifestURI);
+		relativePath = URIPattern.encodePath(relativePath);
 		if (relativePath.startsWith("/"))
 			relativePath = relativePath.substring(1);
 		try {
-			if (this.localBaseURL.toString().endsWith("/")) {
-				return new URL(this.localBaseURL.toString() + relativePath);
+			if (this.connectedStorageURI.toString().endsWith("/")) {
+				return new URI(this.connectedStorageURI.toString() + relativePath);
 			} else {
-				return new URL(this.localBaseURL.toString() + "/" + relativePath);
+				return new URI(this.connectedStorageURI.toString() + "/" + relativePath);
 			}
-		} catch (MalformedURLException e) {
+		} catch (URISyntaxException e) {
 			throw new Error(e);
 		}
 	}
@@ -281,13 +268,17 @@ public class SharedStagingArea implements StagingArea {
 	 * 
 	 * @see edu.unc.lib.staging.StagingArea#getSharedURI(java.lang.String)
 	 */
-	public URI getManifestURI(URL stagedURL) {
-		String relativePath = stagedURL.toString().substring(
-				this.localBaseURL.toString().length());
-		return this.uriPattern.makeURI(uRI, relativePath);
+	public URI getManifestURI(URI stagedURI) throws StagingException {
+		if(!this.isConnected()) throw new StagingException("Stage is not yet connected: "+this.status);
+		// find the right uri pattern for the storage URI
+		URIPattern p = this.stages.findURIPattern(this.connectedStorageURI);
+		if(p == null) throw new StagingException("Unrecognized URIPattern for URI: "+stagedURI);
+		
+		String relPath = p.getRelativePath(this.connectedStorageURI, stagedURI);
+		return this.uriPattern.makeURI(uRI, relPath);
 	}
 
-	public URI makeURI(String relativePath) {
+	public URI makeURI(String... relativePath) {
 		return this.uriPattern.makeURI(uRI, relativePath);
 	}
 
@@ -295,42 +286,14 @@ public class SharedStagingArea implements StagingArea {
 		return this.status;
 	}
 
-	public String getScheme() {
-		return this.uriPattern.getScheme();
+	public URI makeStorageURI(String... pathParts) throws StagingException {
+		if(!this.isConnected()) throw new StagingException("Stage is not yet connected: "+this.status);
+		return this.uriPattern.makeURI(connectedStorageURI, pathParts);
 	}
 
-	public URL makeStagedFileURL(String projectName, String originalPath) {
-		try {
-			List<String> pathSegments = new ArrayList<String>();
-			// combine base URL, project name and original path
-			String basePath = this.localBaseURL.getPath();
-			if (basePath != null) {
-				for (String s : basePath.split("/")) {
-					if (s.trim().length() > 0) {
-						pathSegments.add(s);
-					}
-				}
-			}
-			pathSegments.add(projectName);
-			for (String s : originalPath.split("/")) {
-				if (s.trim().length() > 0) {
-					pathSegments.add(s);
-				}
-			}
-			StringBuilder pathBuilder = new StringBuilder();
-			for (String s : pathSegments) {
-				pathBuilder.append("/").append(s);
-			}
-			String path = pathBuilder.toString();
-			if(!"file".equals(this.localBaseURL.getProtocol())) {
-				path = URLEncoder.encode(path, "utf-8");
-			}
-			return new URL(this.localBaseURL, pathBuilder.toString());
-		} catch (MalformedURLException e) {
-			throw new Error(e);
-		} catch (UnsupportedEncodingException e) {
-			throw new Error(e);
-		}
+	@Override
+	public String getScheme() {
+		return this.uriPattern.getScheme();
 	}
 
 }

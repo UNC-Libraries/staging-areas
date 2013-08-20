@@ -2,7 +2,9 @@ package edu.unc.lib.staging;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
+import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -30,7 +32,11 @@ public class IrodsURIPattern extends URIPattern {
 				result = "";
 			}
 		}
-		return result;
+		try {
+			return URLDecoder.decode(result,"utf-8");
+		} catch (UnsupportedEncodingException e) {
+			throw new Error(e);
+		}
 	}
 
 	/*
@@ -58,23 +64,23 @@ public class IrodsURIPattern extends URIPattern {
 	 * @see edu.unc.lib.staging.URIPattern#getSharedURI(java.lang.String,
 	 * java.lang.String)
 	 */
-	public URI makeURI(URI baseURI, String putPath) {
+	public URI makeURI(URI baseURI, String... putPath) {
 		Matcher mBase = uriPattern.matcher(baseURI.toString());
 		if (!mBase.matches())
 			return null;
+		
 		String user = System.getProperty("user.name");
+		
 		StringBuilder sb = new StringBuilder("irods://");
 		sb.append(user).append("@").append(mBase.group(hostIdx)).append(":")
 				.append(mBase.group(portIdx));
-		String basePath = mBase.group(pathIdx);
-		sb.append(basePath.endsWith("/") ? basePath.substring(0, basePath.length()-1) : basePath);
-		try {
-			for(String seg : putPath.split("/")) {
-				sb.append("/").append(URLEncoder.encode(seg,"utf-8"));
-			}
-		} catch (UnsupportedEncodingException e) {
-			throw new Error(e);
-		}
+		
+		String path = mBase.group(pathIdx);
+		ArrayList<String> pathSegs = new ArrayList<String>();
+		pathSegs.add(path);
+		for(String s : putPath) { pathSegs.add(s); }
+		path = encodePath(pathSegs.toArray(new String[] {}));
+		sb.append(path);
 		return URI.create(sb.toString());
 	}
 

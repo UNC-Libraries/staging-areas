@@ -27,7 +27,7 @@ public class Stages {
 	private List<URIPattern> uriPatterns;
 	private LocalResolver resolver;
 	private String localConfig;
-	private Map<URI, URL> customMappings = new HashMap<URI, URL>();
+	private Map<URI, URI> storageMappings = new HashMap<URI, URI>();
 	public static URL LOCAL_CONFIG_URL = null;
 
 	// you can listen
@@ -91,6 +91,8 @@ public class Stages {
 		ArrayList<URIPattern> result = new ArrayList<URIPattern>();
 		result.add(new IrodsURIPattern());
 		result.add(new TagURIPattern());
+		result.add(new RelativeURIPattern());
+		result.add(new FileURIPattern());
 		return result;
 	}
 
@@ -119,9 +121,8 @@ public class Stages {
 						Map.class);
 				for (Object key : mappings.keySet()) {
 					URI stageURI = URI.create((String) key);
-					URL mappedURL = URI.create((String) mappings.get(key))
-							.toURL();
-					this.customMappings.put(stageURI, mappedURL);
+					URI mappedURI = URI.create((String) mappings.get(key));
+					this.storageMappings.put(stageURI, mappedURI);
 				}
 			}
 			if (rnode.has("repositoryConfigurations")) {
@@ -139,10 +140,10 @@ public class Stages {
 					String uriStr = areaIter.next();
 					JsonNode areaNode = node.get(uriStr);
 					URI uri = URI.create(uriStr);
-					SharedStagingArea stage = parseStagingArea(om, uri,
+					SharedStagingArea stage = parseSharedStagingArea(om, uri,
 							areaNode, LOCAL_CONFIG_URL);
-					if (this.customMappings.containsKey(uri)) {
-						stage.setCustomMapping(this.customMappings.get(uri));
+					if (this.storageMappings.containsKey(uri)) {
+						stage.setStorageMapping(this.storageMappings.get(uri));
 					}
 					localAreas.put(uri, stage);
 				}
@@ -152,27 +153,28 @@ public class Stages {
 			throw new StagingException("Cannot read local staging config.", e);
 		}
 	}
+	
+	protected URIPattern findURIPattern(URI uri) {
+		for (URIPattern p : uriPatterns) {
+			if (p.matches(uri)) return p;
+		}
+		return null;
+	}
 
-	private SharedStagingArea parseStagingArea(ObjectMapper om, URI uri,
+	private SharedStagingArea parseSharedStagingArea(ObjectMapper om, URI uri,
 			JsonNode areaNode, URL configURL) throws StagingException {
 		try {
 			SharedStagingArea stage = om.treeToValue(areaNode,
 					SharedStagingArea.class);
-			for (URIPattern p : uriPatterns) {
-				if (p.matches(uri)) {
-					stage.setUriPattern(p);
-					break;
-				}
-			}
-			if (stage.getUriPattern() == null) {
-				throw new StagingException(
-						"Cannot find a URI pattern for stage: " + uri);
-			}
+			URIPattern p = findURIPattern(uri);
+			if (p == null) throw new StagingException("Cannot find a URI pattern for stage: " + uri);
+			stage.setStages(this);
+			stage.setUriPattern(p);
 			stage.setConfigURL(configURL);
 			stage.setUri(uri);
 			stage.setResolver(this.resolver);
-			if (this.customMappings.containsKey(uri)) {
-				stage.setCustomMapping(this.customMappings.get(uri));
+			if (this.storageMappings.containsKey(uri)) {
+				stage.setStorageMapping(this.storageMappings.get(uri));
 			}
 			stage.init();
 			return stage;
@@ -200,7 +202,7 @@ public class Stages {
 		try {
 			// customMappings
 			result.append("\"customMappings\":");
-			result.append(om.writeValueAsString(this.customMappings)).append(
+			result.append(om.writeValueAsString(this.storageMappings)).append(
 					",\n");
 			// repositoryConfigurations
 			result.append("\"repositoryConfigurations\":");
@@ -213,11 +215,11 @@ public class Stages {
 		return result.toString();
 	}
 
-	public void setCustomMapping(URI stageURI, URL localURL)
+	public void setStorageMapping(URI stageURI, URI storageURI)
 			throws StagingException {
 		if (getAllAreas().get(stageURI) != null) {
-			this.customMappings.put(stageURI, localURL);
-			getAllAreas().get(stageURI).setCustomMapping(localURL);
+			this.storageMappings.put(stageURI, storageURI);
+			getAllAreas().get(stageURI).setStorageMapping(storageURI);
 			notifyListeners();
 		} else {
 			throw new StagingException(
@@ -237,12 +239,13 @@ public class Stages {
 		HashMap<URI, SharedStagingArea> stages = new HashMap<URI, SharedStagingArea>();
 		for (Iterator<String> areaIter = node.fieldNames(); areaIter.hasNext();) {
 			String uriStr = areaIter.next();
+			if(!uriStr.endsWith("/")) throw new StagingException(configURL+" contains area "+uriStr+" which must end in /");
 			JsonNode areaNode = node.get(uriStr);
 			URI uri = URI.create(uriStr);
-			SharedStagingArea stage = this.parseStagingArea(om, uri, areaNode,
+			SharedStagingArea stage = this.parseSharedStagingArea(om, uri, areaNode,
 					configURL);
-			if (this.customMappings.containsKey(uri)) {
-				stage.setCustomMapping(this.customMappings.get(uri));
+			if (this.storageMappings.containsKey(uri)) {
+				stage.setStorageMapping(this.storageMappings.get(uri));
 			}
 			stages.put(uri, stage);
 		}
@@ -250,23 +253,23 @@ public class Stages {
 	}
 
 	/**
-	 * Find the local URI that maps to the staged URI.
+	 * Find the URL that maps to the staged URI.
 	 * 
 	 * @param stagedURI
 	 */
-	public URL getLocalURL(URI stagedURI) throws StagingException {
-		URL result = null;
+	public URI getStorageURI(URI manifestURI) throws StagingException {
+		URI result = null;
 		List<StagingArea> possible = new ArrayList<StagingArea>();
 		// look through the staging areas, see if id matches above
 		for (StagingArea area : this.getAllAreas().values()) {
-			if (area.isWithin(stagedURI)) {
+			if (area.isWithin(manifestURI)) {
 				possible.add(area);
 			}
 		}
 		if (possible.size() == 0) {
 			throw new StagingException(
 					"No known staging areas match the supplied URI: "
-							+ stagedURI);
+							+ manifestURI);
 		}
 		// see if any matching areas are connected
 		List<StagingArea> problems = new ArrayList<StagingArea>();
@@ -286,7 +289,7 @@ public class Stages {
 					.toString());
 		}
 		// convert stagedURI to localURI
-		result = possible.get(0).getStagedURL(stagedURI);
+		result = possible.get(0).getStorageURI(manifestURI);
 		return result;
 	}
 
