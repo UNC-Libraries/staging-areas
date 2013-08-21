@@ -61,4 +61,6 @@ public interface StagingArea {
 	
 	public abstract String getScheme();
 
+	public abstract URI getConnectedStorageURI();
+
 }

@@ -91,6 +91,7 @@ public class SharedStagingArea implements StagingArea {
 		this.stages = stages;
 	}
 
+	@Override
 	public URI getConnectedStorageURI() {
 		return this.connectedStorageURI;
 	}
