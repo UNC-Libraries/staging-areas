@@ -9,6 +9,8 @@ import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 /**
  * These are staging areas common to a work group. Files staged in these spaces
  * may be accessed from many platforms and clients, making manifests and therefore
@@ -21,14 +23,15 @@ import java.util.List;
  * 
  */
 public class SharedStagingArea implements StagingArea {
-	transient Stages stages; // injected at runtime
-	transient URL configURL; // injected at runtime
-	URI uRI;
-	transient URI connectedStorageURI; // determined at runtime
+	@JsonIgnore	Stages stages; // injected at runtime
+	@JsonIgnore	URL configURL; // injected at runtime
+	@JsonIgnore URI uRI;
+	@JsonIgnore URI connectedStorageURI; // determined at runtime
 	String name;
 	CleanupPolicy ingestCleanupPolicy;
 	String confirmFile;
-	transient URIPattern uriPattern; // determined at runtime
+	
+	@JsonIgnore	URIPattern uriPattern; // determined at runtime
 
 	private static final String disconnectedStatus = Messages
 			.getString("SharedStagingArea.Disconnected"); //$NON-NLS-1$
@@ -43,8 +46,9 @@ public class SharedStagingArea implements StagingArea {
 	private static final String connectedVerifiedStatus = Messages
 			.getString("SharedStagingArea.ConnectedVerified"); //$NON-NLS-1$
 
-	private boolean isConnected = false;
-	private String status = disconnectedStatus;
+	@JsonIgnore	private boolean isConnected = false;
+	
+	@JsonIgnore	private String status = disconnectedStatus;
 
 	public URIPattern getUriPattern() {
 		return this.uriPattern;
@@ -68,7 +72,8 @@ public class SharedStagingArea implements StagingArea {
 	}
 
 	List<URI> mappings = new ArrayList<URI>();
-	URI storageMapping;
+	
+	@JsonIgnore	URI storageMapping;
 	private LocalResolver resolver;
 
 	public void init() throws StagingException {
@@ -101,7 +106,7 @@ public class SharedStagingArea implements StagingArea {
 	 * 
 	 * @see edu.unc.lib.staging.StagingArea#getUri()
 	 */
-	public URI getURI() {
+	@JsonIgnore public URI getURI() {
 		return uRI;
 	}
 
@@ -148,7 +153,7 @@ public class SharedStagingArea implements StagingArea {
 		this.mappings = mappings;
 	}
 
-	public boolean isConnected() {
+	@JsonIgnore public boolean isConnected() {
 		return isConnected;
 	}
 
@@ -293,7 +298,7 @@ public class SharedStagingArea implements StagingArea {
 	}
 
 	@Override
-	public String getScheme() {
+	@JsonIgnore public String getScheme() {
 		return this.uriPattern.getScheme();
 	}
 

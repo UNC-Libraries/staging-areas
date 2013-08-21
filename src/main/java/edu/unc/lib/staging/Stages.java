@@ -193,6 +193,13 @@ public class Stages {
 	 * stages. This does not include stages defined remotely, but may include
 	 * their mappings.
 	 * 
+	 * "tag:count0.irods.grid,2013:/irodsStaging/":{
+	 *   "name":"Personal iRODS Stage",
+	 *	 "mappings":[
+	 *	   "irods:cdr-stage.lib.unc.edu:5555/stagingZone/home/count0"
+	 *	 ],
+	 *	 "ingestCleanupPolicy":"DELETE_INGESTED_FILES"
+	 * }
 	 * @return
 	 */
 	public String getLocalConfig() {
@@ -207,8 +214,11 @@ public class Stages {
 			// repositoryConfigurations
 			result.append("\"repositoryConfigurations\":");
 			result.append(om.writeValueAsString(this.repositoryConfigURLs))
-					.append("\n");
+					.append(",\n");
 			// TODO stagingAreas
+			result.append("\"stagingAreas\":\n");
+			Map<URI, SharedStagingArea> locals = this.areas.get(LOCAL_CONFIG_URL);
+			result.append(om.writeValueAsString(locals));
 		} catch (JsonProcessingException ignored) {
 		}
 		result.append("}");

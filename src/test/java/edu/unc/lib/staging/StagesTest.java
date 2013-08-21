@@ -53,8 +53,6 @@ public class StagesTest {
 		assertNotNull("Must have located a stage "+stage, stage);
 		URI foundMapping = stage.getStorageMapping();
 		assertNotNull("Must have located a mapping for "+stageId, foundMapping);
-		System.err.println(foundMapping.toString());
-		System.err.println(customMapping);
 		assertTrue("Mapping must match local JSON config", customMapping.equals(foundMapping.toString()));
 	}
 	
@@ -71,7 +69,13 @@ public class StagesTest {
 	@Test
 	public void testCustomLocalMappingUpdateAndExport() throws StagingException {
 		String config = this.stages.getLocalConfig();
-		new Stages(config, new FileResolver());
+		Stages testStages = new Stages(config, new FileResolver());
+		StagingArea st = testStages.getStage(URI.create("data/"));
+		assertNotNull("must persist bag it staging area", st);
+		String test1Config = testStages.getLocalConfig();
+		Stages test2Stages = new Stages(test1Config, new FileResolver());
+		String test2Config = test2Stages.getLocalConfig();
+		assertTrue("Configs must match", test2Config.equals(test1Config));
 	}
 	
 	@Test
