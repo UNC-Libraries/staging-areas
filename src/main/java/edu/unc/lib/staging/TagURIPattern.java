@@ -2,7 +2,7 @@ package edu.unc.lib.staging;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
-import java.net.URLEncoder;
+import java.net.URLDecoder;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -41,6 +41,11 @@ public class TagURIPattern extends URIPattern {
 			} else {
 				result = "";
 			}
+		}
+		try {
+			result = URLDecoder.decode(result, "utf-8");
+		} catch (UnsupportedEncodingException e) {
+			throw new Error(e);
 		}
 		return result;
 	}

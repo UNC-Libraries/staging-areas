@@ -1,10 +1,7 @@
 package edu.unc.lib.staging;
 
-import java.io.UnsupportedEncodingException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.URLDecoder;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,12 +12,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
  * These are staging areas common to a work group. Files staged in these spaces
  * may be accessed from many platforms and clients, making manifests and therefore
  * projects more portable between users and software installs.
- * @author count0
- *
- */
-/**
- * @author count0
  * 
+ * @author count0
  */
 public class SharedStagingArea implements StagingArea {
 	@JsonIgnore	Stages stages; // injected at runtime
@@ -249,20 +242,12 @@ public class SharedStagingArea implements StagingArea {
 		return this.uriPattern.getRelativePath(this.uRI, manifestURI);
 	}
 
-	public URI getStorageURI(URI manifestURI) {
+	public URI getStorageURI(URI manifestURI) throws StagingException {
+		if(!this.isConnected()) throw new StagingException("Stage is not yet connected: "+this.status);
 		String relativePath = this.getRelativePath(manifestURI);
-		relativePath = URIPattern.encodePath(relativePath);
-		if (relativePath.startsWith("/"))
-			relativePath = relativePath.substring(1);
-		try {
-			if (this.connectedStorageURI.toString().endsWith("/")) {
-				return new URI(this.connectedStorageURI.toString() + relativePath);
-			} else {
-				return new URI(this.connectedStorageURI.toString() + "/" + relativePath);
-			}
-		} catch (URISyntaxException e) {
-			throw new Error(e);
-		}
+		System.err.println("GOT RELATIVE PATH: "+relativePath);
+		URIPattern storageURIPattern = stages.findURIPattern(this.connectedStorageURI);
+		return storageURIPattern.makeURI(this.connectedStorageURI, relativePath);
 	}
 
 	public boolean isWithin(URI stagedURI) {
