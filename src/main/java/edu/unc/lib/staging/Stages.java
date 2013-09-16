@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,7 +22,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class Stages {
-	Logger log = LoggerFactory.getLogger(Stages.class);
+	private static final Logger log = LoggerFactory.getLogger(Stages.class);
 	private List<URL> repositoryConfigURLs = new ArrayList<URL>();
 	private Map<URL, Map<URI, SharedStagingArea>> areas = new HashMap<URL, Map<URI, SharedStagingArea>>();
 	private List<URIPattern> uriPatterns;
@@ -29,13 +30,15 @@ public class Stages {
 	private String localConfig;
 	private Map<URI, URI> storageMappings = new HashMap<URI, URI>();
 	public static URL LOCAL_CONFIG_URL = null;
+	private String hostnameTemplate2 = "http://hostname/stagingLocations.json";
+	private String hostnameTemplate1 = "https://hostname/static/stagingLocations.json";
 
 	// you can listen
 	private List<PropertyChangeListener> listener = new ArrayList<PropertyChangeListener>();
 
 	static {
 		try {
-			LOCAL_CONFIG_URL = new URL("http://localhost/stagingLocations");
+			LOCAL_CONFIG_URL = new URL("http://localhost/stagingLocations.json");
 		} catch (MalformedURLException e) {
 			throw new Error(e);
 		}
@@ -65,11 +68,11 @@ public class Stages {
 	public void addRepositoryConfigURL(String remoteConfigURL)
 			throws StagingException {
 		// can be a full URL to JSON or a repository base URL
-		if (!remoteConfigURL.endsWith("stagingLocations")) {
-			if (!remoteConfigURL.endsWith("/")) {
-				remoteConfigURL = remoteConfigURL + "/";
-			}
-			remoteConfigURL = remoteConfigURL + "stagingLocations";
+		if (remoteConfigURL.startsWith("http") || remoteConfigURL.startsWith("file:")) {
+			// leave it
+		} else { // assume this is a hostname
+			remoteConfigURL = this.hostnameTemplate1.replace("hostname",
+					remoteConfigURL);
 		}
 		try {
 			URL config = new URL(remoteConfigURL);
@@ -81,7 +84,7 @@ public class Stages {
 		}
 	}
 
-	public void removeRepositoryConfigURL(String repositoryConfigURL) {
+	public void removeRepositoryConfigURL(URL repositoryConfigURL) {
 		this.repositoryConfigURLs.remove(repositoryConfigURL);
 		this.areas.remove(repositoryConfigURL);
 		notifyListeners();
@@ -153,10 +156,11 @@ public class Stages {
 			throw new StagingException("Cannot read local staging config.", e);
 		}
 	}
-	
+
 	protected URIPattern findURIPattern(URI uri) {
 		for (URIPattern p : uriPatterns) {
-			if (p.matches(uri)) return p;
+			if (p.matches(uri))
+				return p;
 		}
 		return null;
 	}
@@ -167,7 +171,9 @@ public class Stages {
 			SharedStagingArea stage = om.treeToValue(areaNode,
 					SharedStagingArea.class);
 			URIPattern p = findURIPattern(uri);
-			if (p == null) throw new StagingException("Cannot find a URI pattern for stage: " + uri);
+			if (p == null)
+				throw new StagingException(
+						"Cannot find a URI pattern for stage: " + uri);
 			stage.setStages(this);
 			stage.setUriPattern(p);
 			stage.setConfigURL(configURL);
@@ -194,12 +200,10 @@ public class Stages {
 	 * their mappings.
 	 * 
 	 * "tag:count0.irods.grid,2013:/irodsStaging/":{
-	 *   "name":"Personal iRODS Stage",
-	 *	 "mappings":[
-	 *	   "irods:cdr-stage.lib.unc.edu:5555/stagingZone/home/count0"
-	 *	 ],
-	 *	 "ingestCleanupPolicy":"DELETE_INGESTED_FILES"
-	 * }
+	 * "name":"Personal iRODS Stage", "mappings":[
+	 * "irods:cdr-stage.lib.unc.edu:5555/stagingZone/home/count0" ],
+	 * "ingestCleanupPolicy":"DELETE_INGESTED_FILES" }
+	 * 
 	 * @return
 	 */
 	public String getLocalConfig() {
@@ -217,7 +221,8 @@ public class Stages {
 					.append(",\n");
 			// TODO stagingAreas
 			result.append("\"stagingAreas\":\n");
-			Map<URI, SharedStagingArea> locals = this.areas.get(LOCAL_CONFIG_URL);
+			Map<URI, SharedStagingArea> locals = this.areas
+					.get(LOCAL_CONFIG_URL);
 			result.append(om.writeValueAsString(locals));
 		} catch (JsonProcessingException ignored) {
 		}
@@ -249,11 +254,13 @@ public class Stages {
 		HashMap<URI, SharedStagingArea> stages = new HashMap<URI, SharedStagingArea>();
 		for (Iterator<String> areaIter = node.fieldNames(); areaIter.hasNext();) {
 			String uriStr = areaIter.next();
-			if(!uriStr.endsWith("/")) throw new StagingException(configURL+" contains area "+uriStr+" which must end in /");
+			if (!uriStr.endsWith("/"))
+				throw new StagingException(configURL + " contains area "
+						+ uriStr + " which must end in /");
 			JsonNode areaNode = node.get(uriStr);
 			URI uri = URI.create(uriStr);
-			SharedStagingArea stage = this.parseSharedStagingArea(om, uri, areaNode,
-					configURL);
+			SharedStagingArea stage = this.parseSharedStagingArea(om, uri,
+					areaNode, configURL);
 			if (this.storageMappings.containsKey(uri)) {
 				stage.setStorageMapping(this.storageMappings.get(uri));
 			}
@@ -268,6 +275,7 @@ public class Stages {
 	 * @param stagedURI
 	 */
 	public URI getStorageURI(URI manifestURI) throws StagingException {
+		log.debug("getting storage URI for " + manifestURI);
 		URI result = null;
 		List<StagingArea> possible = new ArrayList<StagingArea>();
 		// look through the staging areas, see if id matches above
@@ -300,6 +308,7 @@ public class Stages {
 		}
 		// convert stagedURI to localURI
 		result = possible.get(0).getStorageURI(manifestURI);
+		log.debug("returning storage URI of " + result);
 		return result;
 	}
 
@@ -327,10 +336,10 @@ public class Stages {
 		}
 		return result;
 	}
-	
+
 	public void connect(URI stageid) {
 		SharedStagingArea stage = this.getAllAreas().get(stageid);
-		if(stage != null) {
+		if (stage != null) {
 			stage.connect();
 			notifyListeners();
 		}
