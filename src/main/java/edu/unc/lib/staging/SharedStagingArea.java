@@ -27,6 +27,7 @@ public class SharedStagingArea implements StagingArea {
 	String name;
 	CleanupPolicy ingestCleanupPolicy;
 	String confirmFile;
+	boolean readOnly = false;
 	
 	@JsonIgnore	URIPattern uriPattern; // determined at runtime
 
@@ -87,6 +88,14 @@ public class SharedStagingArea implements StagingArea {
 
 	public void setConfigURL(URL configURL) {
 		this.configURL = configURL;
+	}
+	
+	public boolean isReadOnly() {
+		return this.readOnly;
+	}
+	
+	public void setReadOnly(boolean readOnly) {
+		this.readOnly = readOnly;
 	}
 	
 	public void setStages(Stages stages) {

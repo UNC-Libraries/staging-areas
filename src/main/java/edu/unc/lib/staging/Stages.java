@@ -29,8 +29,9 @@ public class Stages {
 	private String localConfig;
 	private Map<URI, URI> storageMappings = new HashMap<URI, URI>();
 	public static URL LOCAL_CONFIG_URL = null;
-	//private String hostnameTemplate2 = "http://hostname/stagingLocations.json";
-	private String hostnameTemplate1 = "https://hostname/static/stagingLocations.json";
+	// private String hostnameTemplate2 =
+	// "http://hostname/stagingLocations.json";
+	private String hostnameTemplate1 = "https://hostname/static/stages.json";
 
 	// you can listen
 	private List<PropertyChangeListener> listener = new ArrayList<PropertyChangeListener>();
@@ -60,14 +61,19 @@ public class Stages {
 			loadLocalConfig();
 		}
 		for (URL configURL : this.repositoryConfigURLs) {
-			loadStages(configURL);
+			try {
+				loadStages(configURL);
+			} catch (Exception e) {
+				log.error("Error loading remote staging config", e);
+			}
 		}
 	}
 
 	public void addRepositoryConfigURL(String remoteConfigURL)
 			throws StagingException {
 		// can be a full URL to JSON or a repository base URL
-		if (remoteConfigURL.startsWith("http") || remoteConfigURL.startsWith("file:")) {
+		if (remoteConfigURL.startsWith("http")
+				|| remoteConfigURL.startsWith("file:")) {
 			// leave it
 		} else { // assume this is a hostname
 			remoteConfigURL = this.hostnameTemplate1.replace("hostname",
@@ -107,7 +113,11 @@ public class Stages {
 	}
 
 	public Map<URI, SharedStagingArea> getAreas(URL repositoryConfigURL) {
-		return Collections.unmodifiableMap(this.areas.get(repositoryConfigURL));
+		if(this.areas.get(repositoryConfigURL) != null) {
+			return Collections.unmodifiableMap(this.areas.get(repositoryConfigURL));
+		} else {
+			return Collections.emptyMap();
+		}
 	}
 
 	private void loadLocalConfig() throws StagingException {
@@ -328,8 +338,8 @@ public class Stages {
 	public SharedStagingArea findMatchingArea(URI stagedFileOrManifestURI) {
 		SharedStagingArea result = null;
 		for (SharedStagingArea area : getAllAreas().values()) {
-			if (area.isWithinManifestNamespace(stagedFileOrManifestURI) ||
-					area.isWithinStorage(stagedFileOrManifestURI)) {
+			if (area.isWithinManifestNamespace(stagedFileOrManifestURI)
+					|| area.isWithinStorage(stagedFileOrManifestURI)) {
 				result = area;
 				break;
 			}

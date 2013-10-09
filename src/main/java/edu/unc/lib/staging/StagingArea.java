@@ -28,6 +28,12 @@ public interface StagingArea {
 	 * @return true if connected
 	 */
 	public abstract boolean isConnected();
+	
+	/**
+	 * Is this stage a destination for newly staged files? If not, then it is only used for staging in place.
+	 * @return true if read only
+	 */
+	public abstract boolean isReadOnly();
 
 	public abstract String getStatus();
 	
