@@ -12,7 +12,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,7 +29,7 @@ public class Stages {
 	private String localConfig;
 	private Map<URI, URI> storageMappings = new HashMap<URI, URI>();
 	public static URL LOCAL_CONFIG_URL = null;
-	private String hostnameTemplate2 = "http://hostname/stagingLocations.json";
+	//private String hostnameTemplate2 = "http://hostname/stagingLocations.json";
 	private String hostnameTemplate1 = "https://hostname/static/stagingLocations.json";
 
 	// you can listen
@@ -280,7 +279,7 @@ public class Stages {
 		List<StagingArea> possible = new ArrayList<StagingArea>();
 		// look through the staging areas, see if id matches above
 		for (StagingArea area : this.getAllAreas().values()) {
-			if (area.isWithin(manifestURI)) {
+			if (area.isWithinManifestNamespace(manifestURI)) {
 				possible.add(area);
 			}
 		}
@@ -329,7 +328,8 @@ public class Stages {
 	public SharedStagingArea findMatchingArea(URI stagedFileOrManifestURI) {
 		SharedStagingArea result = null;
 		for (SharedStagingArea area : getAllAreas().values()) {
-			if (area.isWithin(stagedFileOrManifestURI)) {
+			if (area.isWithinManifestNamespace(stagedFileOrManifestURI) ||
+					area.isWithinStorage(stagedFileOrManifestURI)) {
 				result = area;
 				break;
 			}

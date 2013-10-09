@@ -4,8 +4,13 @@ import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.util.StringTokenizer;
+import java.util.regex.Pattern;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public abstract class URIPattern {
+	Logger log = LoggerFactory.getLogger(URIPattern.class);
 
 	public boolean isAutoconnected() {
 		return false;
@@ -34,7 +39,7 @@ public abstract class URIPattern {
 				StringTokenizer st = new StringTokenizer(path, "/");
 				while (st.hasMoreTokens()) {
 					encodedPath.append(URLEncoder.encode(st.nextToken(),
-							"utf-8"));
+							"utf-8").replaceAll(Pattern.quote("+"), "%20"));
 					if (st.hasMoreTokens())
 						encodedPath.append("/");
 				}
@@ -81,8 +86,10 @@ public abstract class URIPattern {
 	 * @return
 	 */
 	public final String getRelativePath(URI baseURI, URI fileURI) {
+		log.debug("baseURI: "+baseURI+"; fileURI: "+fileURI);
 		String filePath = getPath(fileURI);
 		String basePath = getPath(baseURI);
+		log.debug("basePath: "+basePath+"; filePath: "+filePath);
 		return filePath.substring(basePath.length());
 	}
 

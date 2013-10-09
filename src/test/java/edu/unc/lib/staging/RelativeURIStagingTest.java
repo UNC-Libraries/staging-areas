@@ -50,12 +50,12 @@ public class RelativeURIStagingTest {
 	@Test
 	public void testMakeStorageURI() throws StagingException {
 		URI stagedFile = stage.makeStorageURI("my/file is relative.txt");
-		assertTrue("match",stagedFile.toString().equals("data/my/file+is+relative.txt"));
+		assertTrue("match",stagedFile.toString().equals("data/my/file%20is%20relative.txt"));
 	}
 	
 	@Test
 	public void testManifestStorageRoundTrip() throws StagingException {
-		URI testStorageURI = URI.create("data/my/file+is+relative.txt");
+		URI testStorageURI = URI.create("data/my/file%20is%20relative.txt");
 		URI testManifestURI = stage.getManifestURI(testStorageURI);
 		// in relative staging areas the manifest and storage URIs are identical
 		assertTrue("manifest URI must match: "+testManifestURI,testStorageURI.equals(testManifestURI));
@@ -66,16 +66,16 @@ public class RelativeURIStagingTest {
 	@Test
 	public void testPathsAreDecoded() throws StagingException {
 		String originalPath = "my/file is relative.txt";
-		URI stagedFile = stage.makeStorageURI(null, originalPath);
+		URI stagedFile = stage.makeStorageURI(originalPath);
 		String path = stage.getRelativePath(stagedFile);
-		assertTrue("path must match: "+path,originalPath.equals(path));
+		assertTrue("paths must match: "+path+" "+originalPath,originalPath.equals(path));
 	}
 	
 	@Test
 	public void testSharedFoldersAreSupported() throws StagingException {
 		String originalPath = "my/file is relative.txt";
 		URI stagedFile = stage.makeStorageURI("folderA", originalPath);
-		URI expectedURI = URI.create("data/folderA/my/file+is+relative.txt");
+		URI expectedURI = URI.create("data/folderA/my/file%20is%20relative.txt");
 		assertTrue("URI must match: "+stagedFile,expectedURI.equals(stagedFile));
 		String path = stage.getRelativePath(stagedFile);
 		String expectedPath = "folderA/my/file is relative.txt";

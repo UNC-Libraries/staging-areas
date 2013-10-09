@@ -50,7 +50,14 @@ public interface StagingArea {
 	 * @param manifestURI a manifest URI
 	 * @return true if manifestURI matches or falls within the staging area
 	 */
-	public abstract boolean isWithin(URI manifestURI);
+	public abstract boolean isWithinManifestNamespace(URI manifestURI);
+	
+	/**
+	 * Does this storage URI match the connected storage area?
+	 * @param storageURI a storage URI
+	 * @return true if storageURI matches or falls within the storage area
+	 */
+	public abstract boolean isWithinStorage(URI storageURI);
 
 	/**
 	 * Creates a manifest reference for a staged file location.

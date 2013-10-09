@@ -7,7 +7,7 @@ public class RelativeURIPattern extends URIPattern {
 
 	@Override
 	public String getPath(URI uri) {
-		return uri.getPath().replaceAll("\\+", " ");
+		return uri.getPath();
 	}
 
 	@Override

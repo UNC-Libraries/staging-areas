@@ -56,7 +56,7 @@ public class TagURIStagingTest {
 	@Test
 	public void testMatches() throws Exception {
 		URI test1 = URI.create("tag:count0@cdr.lib.unc.edu,2013-01-01:/storhouse_shc/bla/bla/bla");
-		assertTrue("must be within staging area "+test1, stage.isWithin(test1));
+		assertTrue("must be within staging area "+test1, stage.isWithinManifestNamespace(test1));
 	}
 
 	@Test

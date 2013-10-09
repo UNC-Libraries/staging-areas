@@ -6,6 +6,9 @@ import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 /**
@@ -16,6 +19,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
  * @author count0
  */
 public class SharedStagingArea implements StagingArea {
+	private static final Logger log = LoggerFactory.getLogger(SharedStagingArea.class);
 	@JsonIgnore	Stages stages; // injected at runtime
 	@JsonIgnore	URL configURL; // injected at runtime
 	@JsonIgnore URI uRI;
@@ -250,8 +254,18 @@ public class SharedStagingArea implements StagingArea {
 		return storageURIPattern.makeURI(this.connectedStorageURI, relativePath);
 	}
 
-	public boolean isWithin(URI stagedURI) {
-		return this.uriPattern.isWithin(this.uRI, stagedURI);
+	public boolean isWithinManifestNamespace(URI manifestURI) {
+		return this.uriPattern.isWithin(this.uRI, manifestURI);
+	}
+	
+	public boolean isWithinStorage(URI storageURI) {
+		if(this.uriPattern.isLocallyMapped()) {
+			if(!this.isConnected()) return false;
+			URIPattern p = this.stages.findURIPattern(this.getConnectedStorageURI());
+			return p.isWithin(this.getConnectedStorageURI(), storageURI);
+		} else {
+			return this.uriPattern.isWithin(this.uRI, storageURI);
+		}
 	}
 
 	/*
@@ -279,7 +293,10 @@ public class SharedStagingArea implements StagingArea {
 
 	public URI makeStorageURI(String... pathParts) throws StagingException {
 		if(!this.isConnected()) throw new StagingException("Stage is not yet connected: "+this.status);
-		return this.uriPattern.makeURI(connectedStorageURI, pathParts);
+		URIPattern storePattern = stages.findURIPattern(getConnectedStorageURI());
+		URI result = storePattern.makeURI(getConnectedStorageURI(), pathParts);
+		log.debug("make storage uri returning "+result);
+		return result;
 	}
 
 	@Override
