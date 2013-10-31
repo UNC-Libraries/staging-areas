@@ -86,10 +86,10 @@ public abstract class URIPattern {
 	 * @return
 	 */
 	public final String getRelativePath(URI baseURI, URI fileURI) {
-		log.debug("baseURI: "+baseURI+"; fileURI: "+fileURI);
+		log.debug("baseURI: {}; fileURI: {}", baseURI, fileURI);
 		String filePath = getPath(fileURI);
 		String basePath = getPath(baseURI);
-		log.debug("basePath: "+basePath+"; filePath: "+filePath);
+		log.debug("basePath: {}; filePath: {}", basePath, filePath);
 		return filePath.substring(basePath.length());
 	}
 

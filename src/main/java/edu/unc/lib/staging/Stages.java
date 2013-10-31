@@ -284,7 +284,7 @@ public class Stages {
 	 * @param stagedURI
 	 */
 	public URI getStorageURI(URI manifestURI) throws StagingException {
-		log.debug("getting storage URI for " + manifestURI);
+		log.debug("getting storage URI for {}", manifestURI);
 		URI result = null;
 		List<StagingArea> possible = new ArrayList<StagingArea>();
 		// look through the staging areas, see if id matches above
@@ -317,7 +317,7 @@ public class Stages {
 		}
 		// convert stagedURI to localURI
 		result = possible.get(0).getStorageURI(manifestURI);
-		log.debug("returning storage URI of " + result);
+		log.debug("returning storage URI of {}", result);
 		return result;
 	}
 

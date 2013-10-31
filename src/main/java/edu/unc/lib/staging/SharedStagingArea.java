@@ -258,7 +258,7 @@ public class SharedStagingArea implements StagingArea {
 	public URI getStorageURI(URI manifestURI) throws StagingException {
 		if(!this.isConnected()) throw new StagingException("Stage is not yet connected: "+this.status);
 		String relativePath = this.getRelativePath(manifestURI);
-		System.err.println("GOT RELATIVE PATH: "+relativePath);
+		log.debug("GOT RELATIVE PATH: {}", relativePath);
 		URIPattern storageURIPattern = stages.findURIPattern(this.connectedStorageURI);
 		return storageURIPattern.makeURI(this.connectedStorageURI, relativePath);
 	}
@@ -304,7 +304,7 @@ public class SharedStagingArea implements StagingArea {
 		if(!this.isConnected()) throw new StagingException("Stage is not yet connected: "+this.status);
 		URIPattern storePattern = stages.findURIPattern(getConnectedStorageURI());
 		URI result = storePattern.makeURI(getConnectedStorageURI(), pathParts);
-		log.debug("make storage uri returning "+result);
+		log.debug("make storage uri returning {}", result);
 		return result;
 	}
 
