@@ -102,7 +102,6 @@ public class SharedStagingArea implements StagingArea {
 		this.stages = stages;
 	}
 
-	@Override
 	public URI getConnectedStorageURI() {
 		return this.connectedStorageURI;
 	}
@@ -308,7 +307,6 @@ public class SharedStagingArea implements StagingArea {
 		return result;
 	}
 
-	@Override
 	@JsonIgnore public String getScheme() {
 		return this.uriPattern.getScheme();
 	}

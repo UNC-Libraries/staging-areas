@@ -7,7 +7,7 @@ import java.net.URLStreamHandlerFactory;
 public class FileResolver implements LocalResolver {
 
 	public boolean exists(URI locationURI) {
-		if (!"file".equals(locationURI.getScheme())) {
+		if (!"file".equalsIgnoreCase(locationURI.getScheme())) {
 			return false;
 		}
 		File f = new File(locationURI);

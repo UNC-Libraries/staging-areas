@@ -27,7 +27,7 @@ public class FileURIPattern extends URIPattern {
 
 	@Override
 	public boolean matches(URI uri) {
-		return "file".equals(uri.getScheme());
+		return "file".equalsIgnoreCase(uri.getScheme());
 	}
 
 	@Override

@@ -34,7 +34,7 @@ public class TagURIStagingTest {
 			if(r != null) r.close();
 		}
 		this.stages = new Stages(sb.toString(), new FileResolver());
-		URI stageURI = URI.create("tag:cdr.lib.unc.edu,2013:/storhouse_shc/");
+		URI stageURI = URI.create("TaG:cdr.lib.unc.edu,2013:/storhouse_shc/");
 		String lDir = new File("src/test/resources/").toURI().toString();
 		lDir = lDir.substring(0, lDir.length());
 		this.stages.setStorageMapping(stageURI, URI.create(lDir));
@@ -44,7 +44,7 @@ public class TagURIStagingTest {
 	// TODO implement standard URIStagingTests
 	@Test
 	public void testConfigWorks() throws IOException {
-		URI stageURI = URI.create("tag:cdr.lib.unc.edu,2013:/storhouse_shc/");
+		URI stageURI = URI.create("taG:cdr.lib.unc.edu,2013:/storhouse_shc/");
 		assertTrue("URI must match expected stage", stageURI.equals(stage.getURI()));
 		assertTrue("IrodsURIPattern instance", stage.getUriPattern() instanceof TagURIPattern);
 		assertTrue("Should be autoconnected: "+stage.getStatus(), stage.isConnected());

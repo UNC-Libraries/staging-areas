@@ -11,7 +11,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class TagURIPattern extends URIPattern {
-	static final String regex = "tag:((.*)@)?([a-zA-Z0-9\\.]*),([0-9\\-]*):(/.*)?";
+	static final String regex = "(?i)tag(?-i):((.*)@)?([a-zA-Z0-9\\.]*),([0-9\\-]*):(/.*)?";
 	static final Pattern uriPattern = Pattern.compile(regex);
 	static final int hostIdx = 3;
 	static final int dateIdx = 4;

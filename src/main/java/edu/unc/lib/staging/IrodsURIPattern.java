@@ -9,7 +9,7 @@ import java.util.regex.Pattern;
 
 public class IrodsURIPattern extends URIPattern {
 	// e.g. "irods://cdr-stage.lib.unc.edu:5555/stagingZone/home/stage/alpha/"
-	static final String regex = "irods://((.*)@)?([a-zA-Z0-9\\.\\-]*):(\\d{1,5})?(/.*)?";
+	static final String regex = "(?i)irods(?-i)://((.*)@)?([a-zA-Z0-9\\.\\-]*):(\\d{1,5})?(/.*)?";
 	static final Pattern uriPattern = Pattern.compile(regex);
 	static final int hostIdx = 3;
 	static final int portIdx = 4;
