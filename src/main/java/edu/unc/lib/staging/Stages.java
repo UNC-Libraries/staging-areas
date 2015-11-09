@@ -5,7 +5,10 @@ import java.beans.PropertyChangeListener;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -276,6 +279,38 @@ public class Stages {
 			stages.put(uri, stage);
 		}
 		areas.put(configURL, stages);
+	}
+	
+	/**
+	 * Returns the staged URI for the given storage URI, meaning that for given a file path it will
+	 * return the staged (tag, etc) location for that URI.
+	 * 
+	 * @param storageURI
+	 * @return
+	 * @throws StagingException
+	 */
+	public URI getStagedURI(URI storageURI) throws StagingException {
+		
+		for (SharedStagingArea area : getAllAreas().values()) {
+			URI storageMapping = area.getStorageMapping();
+			if (storageMapping == null) {
+				continue;
+			}
+			Path areaPath = Paths.get(storageMapping).toAbsolutePath();
+			Path storagePath = Paths.get(storageURI).toAbsolutePath();
+			
+			if (storagePath.startsWith(areaPath)) {
+				Path relative = areaPath.relativize(storagePath);
+				try {
+					return new URI(area.getURI().toString() + relative.toString());
+				} catch (URISyntaxException e) {
+					log.error("Unable to create staged URI for path {} in area {}",
+							storageURI.toString(), area.getName());
+				}
+			}
+		}
+		
+		return null;
 	}
 
 	/**

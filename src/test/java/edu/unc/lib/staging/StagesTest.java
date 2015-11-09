@@ -1,5 +1,6 @@
 package edu.unc.lib.staging;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.eq;
@@ -54,6 +55,15 @@ public class StagesTest {
 		URI foundMapping = stage.getStorageMapping();
 		assertNotNull("Must have located a mapping for "+stageId, foundMapping);
 		assertTrue("Mapping must match local JSON config", customMapping.equals(foundMapping.toString()));
+	}
+	
+	@Test
+	public void testGetStagedURI() throws Exception {
+		URI stagedURI = this.stages.getStagedURI(new URI("file:/Z:/in_process/path/to/file.txt"));
+		
+		assertNotNull("Must resolve to a staged URI", stagedURI);
+		assertEquals("Staged URI must contain the relative path to the file",
+				"tag:cdr.lib.unc.edu,2013:/storhouse_shc/path/to/file.txt", stagedURI.toString());
 	}
 	
 	@Test
