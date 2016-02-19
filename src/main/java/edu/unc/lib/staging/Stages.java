@@ -296,21 +296,21 @@ public class Stages {
 			if (storageMapping == null) {
 				continue;
 			}
+			
 			Path areaPath = Paths.get(storageMapping).toAbsolutePath();
 			Path storagePath = Paths.get(storageURI).toAbsolutePath();
 			
 			if (storagePath.startsWith(areaPath)) {
-				Path relative = areaPath.relativize(storagePath);
 				try {
-					return new URI(area.getURI().toString() + relative.toString());
+					return new URI(area.getURI().toString() + storageMapping.relativize(storageURI));
 				} catch (URISyntaxException e) {
-					log.error("Unable to create staged URI for path {} in area {}",
-							storageURI.toString(), area.getName());
+					throw new StagingException("Unable to create staged URI for path " + storageURI.toString()
+							+ " in area " + area.getName(), e);
 				}
 			}
 		}
 		
-		return null;
+		throw new StagingException("Unable to find a staging area for path " + storageURI.toString());
 	}
 
 	/**
