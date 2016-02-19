@@ -67,6 +67,15 @@ public class StagesTest {
 	}
 	
 	@Test
+	public void testGetStagedURIWithSpaces() throws Exception {
+		URI stagedURI = this.stages.getStagedURI(new URI("file:/Z:/in_process/path%20with%20spaces/to/file.txt"));
+		
+		assertNotNull("Must resolve to a staged URI", stagedURI);
+		assertEquals("Staged URI must contain the relative path to the file",
+				"tag:cdr.lib.unc.edu,2013:/storhouse_shc/path%20with%20spaces/to/file.txt", stagedURI.toString());
+	}
+	
+	@Test
 	public void testLocalStageDefinitionsOverrideRemote() {
 		URI test = URI.create("irods://cdr-stage.lib.unc.edu:3333/stagingZone/projects/");
 		StagingArea override = this.stages.getStage(test);
