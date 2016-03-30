@@ -2,13 +2,14 @@ package edu.unc.lib.staging;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
-import java.net.URLDecoder;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import org.springframework.web.util.UriUtils;
 
 public class TagURIPattern extends URIPattern {
 	static final String regex = "(?i)tag(?-i):((.*)@)?([a-zA-Z0-9\\.]*),([0-9\\-]*):(/.*)?";
@@ -43,7 +44,7 @@ public class TagURIPattern extends URIPattern {
 			}
 		}
 		try {
-			result = URLDecoder.decode(result, "utf-8");
+			result = UriUtils.decode(result, "utf-8");
 		} catch (UnsupportedEncodingException e) {
 			throw new Error(e);
 		}
