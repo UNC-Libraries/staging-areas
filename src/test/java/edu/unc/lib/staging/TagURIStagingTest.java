@@ -1,5 +1,6 @@
 package edu.unc.lib.staging;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.BufferedReader;
@@ -96,5 +97,21 @@ public class TagURIStagingTest {
 		// in iRODS staging areas the manifest and storage URIs are identical
 		URI resultStorageURI = stage.getStorageURI(testManifestURI);
 		assertTrue("storage URI must match: "+resultStorageURI,testStorageURI.equals(resultStorageURI));
+	}
+	
+	@Test
+	public void testPathEncoding() throws Exception {
+		URI baseUri = new URI("tag:cdr.lib.unc.edu,2013:/digitalarchive/");
+		URI fileUri = new URI("tag:cdr.lib.unc.edu,2013:/digitalarchive/with%20spaces/file");
+	
+		TagURIPattern pattern = new TagURIPattern();
+		assertEquals("with spaces/file", pattern.getRelativePath(baseUri, fileUri));
+		
+		fileUri = new URI("tag:cdr.lib.unc.edu,2013:/digitalarchive/with+plus/file");
+		assertEquals("with+plus/file", pattern.getRelativePath(baseUri, fileUri));
+		
+		String storage = stage.getStorageURI(fileUri).toString();
+		assertTrue("Storage path did not resolve to a file uri", storage.startsWith("file:/"));
+		assertTrue("Incorrect storage URI", storage.endsWith("src/test/resources/with+plus/file"));
 	}
 }

@@ -2,12 +2,11 @@ package edu.unc.lib.staging;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
-import java.net.URLEncoder;
 import java.util.StringTokenizer;
-import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.web.util.UriUtils;
 
 public abstract class URIPattern {
 	Logger log = LoggerFactory.getLogger(URIPattern.class);
@@ -38,8 +37,9 @@ public abstract class URIPattern {
 			try {
 				StringTokenizer st = new StringTokenizer(path, "/");
 				while (st.hasMoreTokens()) {
-					encodedPath.append(URLEncoder.encode(st.nextToken(),
-							"utf-8").replaceAll(Pattern.quote("+"), "%20"));
+					encodedPath.append(UriUtils.encodeUri(st.nextToken(), "utf-8"));
+					//For spring 4.2.x
+					//encodedPath.append(UriUtils.encode(st.nextToken(), "utf-8"));
 					if (st.hasMoreTokens())
 						encodedPath.append("/");
 				}
