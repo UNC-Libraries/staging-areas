@@ -37,9 +37,7 @@ public abstract class URIPattern {
 			try {
 				StringTokenizer st = new StringTokenizer(path, "/");
 				while (st.hasMoreTokens()) {
-					encodedPath.append(UriUtils.encodeUri(st.nextToken(), "utf-8"));
-					//For spring 4.2.x
-					//encodedPath.append(UriUtils.encode(st.nextToken(), "utf-8"));
+					encodedPath.append(UriUtils.encodePath(st.nextToken(), "utf-8"));
 					if (st.hasMoreTokens())
 						encodedPath.append("/");
 				}
